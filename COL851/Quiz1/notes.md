@@ -71,3 +71,45 @@ as well as the data-parallel structure of the target hardware.
 The blind application of traditional weight pruning often
 results in performance loss,
 
+2.1 DNN Weight Pruning
+Figure 1 shows a typical
+DNN used for image classification. It consists of two CONV layers
+followed by two FC layers. In FC layers, all input values are con-
+nected to every neuron. For CONV layers, as shown in Figure 1,
+they consist of a stack of 2D matrices named feature maps.
+
+The convolution operation is performed between the input feature maps
+and the weights to generate the output.
+FC layers perform matrix-vector multiplication, and CONV layers
+perform matrix-matrix multiplication. Weights of each layer can be
+grouped into a weight matrix. For FC layers, the input values are
+stored in a 1D vector (input vector). Then, the weight matrix can
+be multiplied with the input vector to generate the output which is
+also a 1D vector. For each CONV layer, its input is effectively a
+3D array. The image-to-column (im2col) function will rearrange the
+3D array into a 2D matrix (input matrix). Then, the weight matrix
+will be multiplied with the input matrix to generate an output matrix
+which can be converted back to a 3D array for the next layer
+-------------------------------------------------------------------------------------------------------------------------
+As an example, FC layers perform the computation
+Y = f (W · X) (1)
+where Y is the output activation vector, W is the weight matrix
+and X is the input vector. f is the element-wise non-linear activa-
+tion function. Bias values can be appended to weights matrix with
+corresponding input values equal to 1 and, therefore, are neglected.
+As shown in Figure 2, weight pruning removes redundant weights
+and the dense weight matrix W (Figure 2(A)) is converted into a
+sparse matrix Wsparse (Figure 2(B)). Every output element yi ∈ Y
+should be calculated as
+yi = f ( ∑
+wsparse
+i j ,0, j∈[0,n−1]
+wsparse
+i j x j ) (2)
+where multiply-accumulate operations with zero weight have been
+removed. n is the number of columns in W.
+--------------------------------------------------------------------------------------------------------------------------
+
+After weight pruning, the input vector or input matrix is still dense
+for each layer. The FC and CONV layers need to perform sparse
+matrix-vector and sparse matrix-matrix multiplication, respectively
