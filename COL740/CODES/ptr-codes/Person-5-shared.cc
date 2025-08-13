@@ -1,4 +1,4 @@
-===90\3333333334o3op3o\p]]565wtttttttttttttttttttttttttttttttttttttttttttttttttuiotw32443#include <iostream>
+#include <iostream>
 #include <cstring>
 #include <memory>
 
