@@ -146,3 +146,43 @@ relative model sizes and MAC operations. Weight pruning hurts the
 performance of LeNet-5 (on GPU), ConvNet, NIN and AlexNet,
 which causes an execution time increase for these networks
 
+The real execution time of
+the FC layers is significantly reduced by traditional weight pruning,
+which is similar to the results shown in the previous work [19]. For
+both FC and CONV layers, there is a large gap between the real
+execution time of the pruned networks and the expected values. The
+performance gains are lagging significantly behind the reduction in
+MAC operations. Lastly, weight pruning is ineffective for CONV
+layers, leading to substantial increases in execution time for ConvNet,
+NIN and AlextNet.
+
+The gap between real and expected execution times occurs be-
+cause the sparse weight matrices lose the regular structure of their
+dense counterparts
+CSR indexing of input values requires ad-
+ditional computation and memory accesses. Worse yet, since sparse
+matrices lose the regular structure, many optimizations applicable
+to dense matrices, e.g. matrix tiling, cannot be applied. For CPU
+computation, FC layers do not suffer as much from these reasons
+because they have a much lower computation/memory access ratio
+compared with CONV layers.
+
+fIG-5
+We measure three cases: original dense layer (Dense), sparse
+layer with 80% (Sparse-0.80) and 60% (Sparse-0.60) of the weights
+removed. We profile the computation with Callgrind. Sparse-0.60
+represents the actual pruning rate for this layer, while Sparse-0.80
+represents the pruning rate necessary to reach the break-even per-
+formance point. As shown in the figure, weight pruning leads to
+large increases in L1 D-Cache load misses, stores, and store misses
+due to the sparse representation
+
+With 60% pruning, these overheads
+are not counter-balanced by the computation reduction, hence a net
+performance loss is observed. At 80% pruning, the combination of
+modestly lower memory access overheads and higher reductions
+in computations results in break-even performance. Pruning rates
+of more than 80% are necessary to overcome the memory access
+overhead for this layer and achieve a net performance gain.
+
+![](2025-08-14-07-23-42.png)
