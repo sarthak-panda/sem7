@@ -113,3 +113,36 @@ removed. n is the number of columns in W.
 After weight pruning, the input vector or input matrix is still dense
 for each layer. The FC and CONV layers need to perform sparse
 matrix-vector and sparse matrix-matrix multiplication, respectively
+
+Deep Compression [19, 20] provides a typical weight pruning
+technique. Weights with absolute values lower than the thresholds
+are removed, and the remaining network is retrained. The steps of
+removing weights and retraining are iteratively applied to generate
+the pruned DNN model.
+
+2.2 Challenges
+Weight pruning can dramatically decrease DNN model sizes and the
+number of MAC operations. However, several challenges exist for
+traditional DNN pruning techniques.
+
+The first challenge is that the sparse weight matrix spends too
+much extra data to record the sparse matrix format. For example, as
+shown in Figure 2 (C), the compressed sparse rows (CSR) format use
+three 1-D arrays (A, IA, JA) to store a m × n matrix W. A holds all
+the nonzero values. IA records the index into A of the first nonzero
+element in each row of W. JA stores the column indexes of the
+nonzero elements. Since the index array JA has the same size with
+the data array A, more than half of the data in the CSR format is
+used to store the sparse matrix format
+
+The second challenge is that weight pruning can hurt the DNN
+computation performance. Figure 3 shows the relative execution
+time, model sizes and MAC operations of network models pruned
+by the weight pruning method in Deep Compression with respect
+to the original DNN models. The first three bars show the relative
+execution time on the microcontroller, CPU and GPU. As shown
+in the figure, the relative execution time is much higher than the
+relative model sizes and MAC operations. Weight pruning hurts the
+performance of LeNet-5 (on GPU), ConvNet, NIN and AlexNet,
+which causes an execution time increase for these networks
+
