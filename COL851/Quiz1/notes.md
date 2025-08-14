@@ -337,3 +337,29 @@ into the network. The remaining DNN model after node pruning
 keeps the regular dense DNN structure and will not suffer from the
 overheads of network sparsity
 
+![](2025-08-15-01-54-03.png)
+
+Figure 11 shows the main steps of node pruning. First, we will add
+a mask layer for each DNN layer except the input and output layers.
+
+Figure 12 gives an example of a mask layer for fully-connected
+layers. The output values of layer A need to go through the mask layer
+A′ before propagated to the next layer. Each node in the mask layer
+holds two parameters α and β . α is a boolean variable (α ∈ {0, 1})
+and β is a floating number between 0 and 1 ( 0 6 β 6 1 ). Let array Y
+and Y′ to be the output activation array of the original layer A and
+the mask layer A′. For y′
+i ∈ Y′ and yi ∈ Y, we have
+y′i = αi · yi
+With αi set to 0, the corresponding node can be considered as re-
+moved because the output y′i is fixed to 0.
+
+![](2025-08-15-02-33-54.png)
+
+For convolutional layers, the activations in the feature map i will
+go through the same mask node i and produce a masked feature map
+keeping the same size. Therefore, convolutional layers are pruned at
+a granularity of feature maps, and we are considering each feature
+map as one node
+
+![](2025-08-15-03-13-35.png)
