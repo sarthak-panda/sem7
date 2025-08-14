@@ -186,3 +186,154 @@ of more than 80% are necessary to overcome the memory access
 overhead for this layer and achieve a net performance gain.
 
 ![](2025-08-14-07-23-42.png)
+
+The first step of Scalpel
+is profiling and determining the parallelism level of the hardware
+platform. All general-purpose hardware platforms are divided into
+three categories based on their internal parallelism: low parallelism,
+moderate parallelism, and high parallelism.
+For low-parallelism hardware, SIMD-aware weight pruning is
+applied. It prunes weights in groups and forces the remaining weights
+to be in aligned groups. All groups have the same size as the SIMD
+width and the weights in the same group share the same column
+index, reducing the overhead of the sparse format.
+For high-parallelism hardware, node pruning is applied. It re-
+moves the DNN redundancy by removing redundant nodes instead
+of redundant weights. Removing nodes does not break the regular
+structure of dense weight matrices.<---Duplicate>
+
+![](2025-08-14-17-41-06.png)
+
+3.2
+Multiple inputs for the same DNN can be processed in a batch to
+reduce the memory access. The weight matrices can be loaded once
+and shared for the computation of multiple different inputs. Batch
+processing will increase the computation throughput but also the
+latency
+On low-parallelism and moderate-parallelism hardware, we
+set the batch size to 1 because real-time applications need the DNN
+computation to be completed within a short latency. However, for
+high-parallelism hardware, the computation is throughput-driven,
+and DNN computation with a large batch size can still meet the
+latency requirement. In this case, we set the batch size to 50 for
+DNN computation on high-parallelism hardware. Han et al. [19 ] set
+batch size to 1 for GPU testing, which is actually unpractical
+
+3.3
+![](2025-08-14-17-51-11.png)
+The main steps of SIMD-aware weight pruning are
+shown in Figure above
+ We use ARM Cortex-M4 microcontroller as an
+example of low-parallelism hardware. It has a 2-way SIMD unit for
+16-bit fixed-point numbers.
+The first step is weights grouping. All the weights are divided
+into aligned groups with the same size equal to the supported SIMD
+width. Figure 8 (A) shows a simple example of weights grouping.
+All groups have a size of 2 which is the SIMD width of Cortex-M4.
+
+The second step is pruning weight groups. We calculate the Root-
+Mean-Square (RMS) of each group and use it to measure the impor-
+tance of weight groups. Groups with RMS value below a threshold
+are removed. Figure 8 (B) shows an example of the weight matrix
+after pruning weight groups. Then the pruned weight matrix will
+be retrained. The steps of pruning weight groups and retraining
+DNN are iteratively applied until the retrained DNN cannot keep the
+original accuracy
+
+SIMD-aware weight pruning works layer by layer. The execution
+time for each layer will be generated at the beginning, and the
+pruning process starts with the layer of the highest execution time.
+Every time after retraining the pruned DNN, the execution time of
+each layer will be updated. The new slowest layer will be pruned
+in the next iteration if the retrained DNN does not lose the original
+accuracy. We will not prune the layers which have low redundancy
+and cannot get a performance improvement through the SIMD-aware
+weight pruning.
+
+During SIMD-aware weight pruning, we need to adjust the dropout
+ratio. Dropout is a widely used technique for preventing overfit-
+ting [39]. During network training, dropout is implemented by keep-
+ing a neuron active with some probability p, or setting it to zero
+otherwise. This procedure can be regarded as sampling the neu-
+ral network, and only the sampled part of the network needs to be
+updated through this iteration of training. For next iteration, the
+network should be re-sampled. SIMD-aware weight pruning will
+remove connections and reduce the DNN model capacity. We use
+the same technique with Han et al. [ 20] to adjust the dropout ratio.
+Assuming for the layer i, Ci is the number of the connections where
+Cio is for the original network and Cir is for the remaining network.
+We can adjust the dropout ratio as
+Dr = Do
+√ Cir
+Cio
+(3)
+where Do is the original dropout ratio and Dr is the adjusted dropout
+ratio for retraining the remaining network after pruning weight
+group
+
+![](2025-08-14-18-16-59.png)
+
+After SIMD-aware weight pruning, we use a modified CSR format
+to record the sparse weight matrices. The modified CSR format,
+shown in Figure 8(C), includes three 1-D arrays: A′, IA′ and JA′.
+A′ stores all the nonzero weight groups with the original order.
+IA′ records the index into A′ of the first nonzero element in each
+row of W. JA′ stores the column index of each group. Only the
+column index of the first element in each group is recorded. In real
+computation, as the dashed arrows in Figure 8 show, we can load
+the nonzero weights in the array A′ in groups. Then only one index
+from array JA′ is used to load the corresponding input values. Since
+the input values are now also in contiguous addresses, they can be
+loaded with a single SIMD instruction. With the input values and
+weights loaded, the SIMD unit then performs the computation
+
+SIMD-aware weight pruning can reduce both model sizes and
+execution time of DNNs on low-parallelism hardware. Using one
+column index for each weight group can dramatically reduce the
+storage size of the indexes array JA′ and the entire model size.
+For DNN computation, loading multiple contiguous input values
+with one SIMD instruction can reduce the computation instructions.
+The reduction in model size can also reduce the memory footprint.
+Therefore, the DNN computation performance can be improved with
+SIMD-aware weight pruning
+
+![](2025-08-14-18-26-40.png)
+
+Figure 9 shows the peak performance benefit from SIMD-aware
+weight pruning. The x-axis is the pruning rate which means how
+much weights we can remove from the weight matrix. For sparse
+matrix-vector (MV-Sparse) and matrix-matrix (MM-Sparse) mul-
+tiplication, we need to remove more than 68% and 73% of the
+weight matrix to decrease the execution time, respectively. However,
+with SIMD-aware weight pruning (MV-SIMD Sparse / MM-SIMD
+Sparse), we only need to remove 48% and 56% of the weights
+
+3.4
+Traditional weight pruning techniques will decrease the perfor-
+mance of all DNN layers on high-parallelism hardware. Figure 10
+shows the relative execution time of sparse matrix-matrix multipli-
+cation on GPU against the pruning rate. The two matrices have the
+sizes of 4096x4096 and 4096x50. It estimates the performance of a
+fully-connected layer with 4096 inputs and 4096 outputs. The com-
+putation batch size is set to 50. As shown in the figure, more than
+96% of the weights need to be removed to achieve a performance
+speedup. However, without a loss of accuracy, it is unpractical to
+remove that much weights from DNN layers. The matrix sparsity
+caused by weight pruning will hurt the computation performance of
+all layers
+![](2025-08-14-18-50-13.png)
+
+To avoid this performance decrease, node pruning removes DNN
+redundancy by removing entire nodes instead of weights. It uses
+mask layers to dynamically find out unimportant nodes and block
+their outputs. The blocked nodes are removed after the training of
+mask layers. After removing all redundant nodes, mask layers are
+removed, and the network is retrained to get the pruned DNN model.
+
+One neuron in the fully-connected layers or one feature map in the
+convolutional layers is considered as one node. Removing nodes in
+DNNs only shrinks the size of each layer but will not incur sparsity
+into the network. The remaining DNN model after node pruning
+keeps the regular dense DNN structure and will not suffer from the
+overheads of network sparsity
+
