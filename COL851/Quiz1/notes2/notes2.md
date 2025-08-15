@@ -118,3 +118,27 @@ of optimizing a computational graph with multiple operators
 should contain different ways to compose the operators. A
 template-based approach fails to achieve this because it can-
 not break down their fixed templates and re-compose them
+during the search.
+
+Sequential construction based search. This approach de-
+fines the search space by decomposing the program construc-
+tion into a fixed sequence of decisions. The compiler then
+uses an algorithm such as beam search [34] to search for good
+decisions (e.g., Halide auto-scheduler [2]). In this approach,
+the compiler constructs a tensor program by sequentially un-
+folding all nodes in the computational graph. For each node,
+the compiler makes a few decisions on how to transform it
+into low-level tensor programs (i.e., deciding computation
+location, storage location, tile size, etc.). When all nodes are
+unfolded, a complete tensor program is constructed. This ap-
+proach uses a set of general unfolding rules for every node,
+so it can search automatically without requiring manual tem-
+plates. Because the number of possible choices of each de-
+cision is large, to make the sequential process feasible, this
+approach keeps only top- k candidate programs after every de-
+cision. The compiler estimates and compares the performance
+of candidate programs with a learned cost model to select the
+top-k candidates; while other candidates are pruned. During
+the search, the candidate programs are incomplete because
+only part of the computational graph is unfolded or only some
+of the decisions are made. Figure 2b shows this process
