@@ -86,3 +86,35 @@ Ansor system demonstrating that the above techniques
 outperform state-of-the-art systems on a variety of DNNs
 and hardware platforms
 ----------------------------------------\
+
+
+2. Background
+Template-guided search. In template-guided search, the
+search space is defined by manual templates. As shown in Fig-
+ure 2a, the compiler (e.g., TVM) requires the user to manually
+write a template for a computation definition. The template
+defines the structure of the tensor programs with some tunable
+parameters (e.g., tile size and unrolling factor). The compiler
+then searches for the best values of these parameters for a spe-
+cific input shape configuration and a specific hardware target.
+This approach has achieved good performance on common
+deep learning operators. However, developing templates re-
+quires substantial effort. For example, the code repository of
+TVM already contains more than 15K lines of code for these
+templates. This number continues to grow as new operators
+and new hardware platforms emerge. Besides, constructing a
+quality template requires expertise in both tensor operators
+and hardware. It takes non-trivial research effort [32, 55, 59]
+to develop quality templates. Despite the complexity of tem-
+plate design, manual templates only cover limited program
+structures because manually enumerating all optimization
+choices for all operators is prohibitive. This approach typi-
+cally requires defining one template for each operator. Flex-
+Tensor [59] proposes a general template to cover multiple
+operators, but its template is still designed for single operator
+granularity, which fails to include optimizations involving
+multiple operators (e.g., operator fusion). The search space
+of optimizing a computational graph with multiple operators
+should contain different ways to compose the operators. A
+template-based approach fails to achieve this because it can-
+not break down their fixed templates and re-compose them
