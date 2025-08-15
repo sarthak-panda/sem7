@@ -400,3 +400,62 @@ moved.
 The mask layers are then removed, and output activations of
 remaining nodes can be directly propagated to the next layer. The
 remaining network is retrained to get the final pruned DNN
+
+3.5
+ To limit the computation
+latency for real-time application, DNN computation usually has a
+small batch size on moderate-parallelism hardware. Here the batch
+size is fixed to 1, and a small batch size will give similar results
+
+DNNs can be split into two parts: fully-connected layers and
+convolutional layers. With a batch size of 1, fully-connected lay-
+ers perform matrix-vector multiplication, and convolutional layers
+perform matrix-matrix multiplication. In this case, Scalpel applies
+SIMD-aware weight pruning to fully-connected layers and node
+pruning to convolutional layers.
+
+![](2025-08-15-10-59-19.png)
+
+Figure 13 shows the relative execution time reduction of matrix-
+vector multiplication with SIMD-aware weight pruning. Intel i7-
+6700 has an 8-way SIMD unit for 32-bit floating-point numbers.
+Therefore, SIMD-aware weight pruning removes weights in groups
+of 8. Comparing to the sparse matrix-vector multiplication with the
+Intel MKL library (MKL-Sparse), the SIMD-aware weight pruning
+(SIMD-Sparse) can dramatically improve the computation perfor-
+mance. The percentage of weights need to be removed for perfor-
+mance speedup decreases from 52% to 3%. Therefore, for fully-
+connected layers which perform matrix-vector multiplication, the
+SIMD-aware weight pruning can be applied to improve the perfor-
+mance and reduce model sizes
+
+SIMD-aware weight pruning can dramatically decrease the execu-
+tion time on moderate-parallelism hardware for three reasons. First,
+by reducing the number of indexes, the memory footprint for the
+computation decreases. Second, weights are grouped and aligned
+with SIMD-aware weight pruning, which increases the spatial local-
+ity of reading weights and corresponding inputs. Third, the number
+of computation instructions decreases since we only need to load
+one index for each group and the corresponding input values can be
+loaded with SIMD instructions.
+Figure 14 is the corresponding relative execution time reduction
+for matrix-matrix multiplication. Compared to the sparse matrix-
+matrix multiplication with the Intel MKL library (MKL-Sparse),
+SIMD-aware weight pruning (SIMD-Sparse) cannot improve the
+execution performance. To achieve a performance speedup with
+traditional pruning technique or SIMD-aware weight pruning, at
+least 79% of the weights need to be removed. However, without
+accuracy loss, it is difficult to remove that much weights from convo-
+lutional layers for DNNs running on moderate-parallelism hardware.
+Convolutional layers have much less redundancy compared with
+full-connected layers since all weights need to be reused in the
+convolution operations. Therefore, weight pruning will hurt the com-
+putation performance and cannot be applied to convolutional layers.
+In this case, Scalpel applies node pruning to convolutional layers
+since it keeps the regular structure of weight matrices to avoid the
+performance decrease caused by weight pruning.
+To apply both SIMD-aware weight pruning and node pruning
+to the same network, we will first use node pruning to remove
+redundant nodes in the convolutional layers. Then the convolutional
+layers are fixed, and the SIMD-aware weight pruning is employed
+to prune redundant weights from the fully-connected layers
