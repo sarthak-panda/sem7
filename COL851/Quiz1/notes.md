@@ -379,6 +379,24 @@ Node pruning also needs to adjust the dropout ratio. Different
 from SIMD-aware weight pruning, the dropout ratio is dynamically
 updated during the step of training mask layers. In iteration k, the
 dropout ratio is calculated as
-Dropout|k = Dropout|0 × N|k/N|0(8)
+Dropout|k = Dropout|0 × N|k/N|0 (8)
 where Dropout|0 is the initial dropout ratio, N|0 is the initial number
 of nodes and N|k is the number of remaining nodes in iteration k
+
+In the step of training mask layers, the parameters of other layers
+are not fixed. Weights and biases in other layers are trained to fit the
+new DNN architecture with nodes removed.
+After training mask layers, the weight decay of L1 regularization
+on the mask layers is increased. Then more nodes will be removed in
+the next iteration of training mask layers. The two steps of training
+mask layers and increasing weight decay will be iteratively applied
+until retraining cannot retain the DNN accuracy.
+
+The last step of node pruning is removing masked nodes, re-
+moving mask layers, and retraining the network. All the nodes and
+feature maps with corresponding α value equal to zero are removed.
+For example, in Figure 12, the node A-3 with α3 = 0 will be re-
+moved.
+The mask layers are then removed, and output activations of
+remaining nodes can be directly propagated to the next layer. The
+remaining network is retrained to get the final pruned DNN
