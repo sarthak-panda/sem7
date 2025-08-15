@@ -363,3 +363,22 @@ a granularity of feature maps, and we are considering each feature
 map as one node
 
 ![](2025-08-15-03-13-35.png)
+
+![](2025-08-15-07-11-55.png)
+
+where λ is the weight decay (regularization strength). It forces βi to
+be close to zero. If the corresponding node is not important, βi will
+be decreased to be lower than threshold T and the node is temporarily
+removed. In case some removed nodes are found important, they
+will be retained through the DNN training. Since the threshold T is
+fixed in node pruning, increasing the weight decay λ will increase
+the penalty for βi and decrease more parameters β to be lower than
+T . More nodes will, therefore, be removed
+
+Node pruning also needs to adjust the dropout ratio. Different
+from SIMD-aware weight pruning, the dropout ratio is dynamically
+updated during the step of training mask layers. In iteration k, the
+dropout ratio is calculated as
+Dropout|k = Dropout|0 × N|k/N|0(8)
+where Dropout|0 is the initial dropout ratio, N|0 is the initial number
+of nodes and N|k is the number of remaining nodes in iteration k
