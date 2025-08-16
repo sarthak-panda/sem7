@@ -314,3 +314,72 @@ sketch. For simple element-wise nodes (e.g., ReLU, element-
 wise add), we can safely inline them. Note that new nodes
 (e.g., caching nodes, layout transform nodes) may also be
 introduced to the DAG during the sketch generation
+
+We propose a derivation-based enumeration approach to
+generate all possible sketches by recursively applying several
+basic rules. This process takes a DAG as an input and returns
+a list of sketches. We define the State s = (S, i) , where S is
+the current partially generated sketch for the DAG, and i is the
+index of the current working node. The nodes in a DAG are
+sorted in a topological order from output to input. The deriva-
+tion begins from the initial naive program and the last node, or
+the initial state s = (naive program, index o f the last node) .
+Then we try to apply all derivation rules to the states re-
+cursively. For each rule, if the current state satisfies the ap-
+plication condition, we apply the rule to sigma = (S, i) and get
+sigma' = (S' , i' ) where i' <= i . This way the index i (working node)
+
+decreases monotonically. A state becomes a terminal state
+when i = 0. During enumeration, multiple rules can be ap-
+plied to one state to generate multiple succeeding states. One
+rule can also generate multiple possible succeeding states.
+So we maintain a queue to store all intermediate states. The
+process ends when the queue is empty. All s.S in terminal
+states form a sketch list at the end of the sketch generation.
+The number of sketches is less than 10 for a typical subgraph.
+
+Derivation rules. Table 1 lists derivation rules we used
+for the CPU. We first provide the definition of the used
+predicates and then describe the functionality of each rule.
+IsStrictInliable(S, i) indicates if the node i in S is a sim-
+ple element-wise operator that can always be inlined (e.g.,
+element-wise add, ReLU). HasDataReuse(S, i) indicates if
+the node i in S is a compute-intensive operator and has
+plentiful intra-operator data reuse opportunity (e.g., mat-
+mul, conv2d). HasFusibleConsumer(S, i) indicates if the
+node i in S has only one consumer j and node j can be
+fused into node i (e.g., matmul + bias_add, conv2d + relu).
+HasMoreReductionParallel(S, i) indicates if the node i in S
+has little parallelism in space dimensions but has ample paral-
+lelism opportunity in reduction dimensions. (e.g., computing
+2-norm of a matrix, matmul C2⇥2 = A 2⇥512 · B512⇥2 ). We per-
+form static analysis on the computation definitions to get the
+values for these predicates. The analysis is done automatically
+by parsing the read/write pattern in the mathematical expres-
+sions. Next, we introduce the functionality of each derivation
+rule.
+
+Rule 1 just simply skips a node if it is not strictly inlinable.
+Rule 2 always inlines strictly inlinable nodes. Since the condi-
+tions of rule 1 and rule 2 are mutually exclusive, a state with
+i > 1 can always satisfy one of them and continue to derive.
+Rules 3, 4, and 5 deal with the multi-level tiling and fusion
+for nodes that have data reuse. Rule 3 performs multi-level
+tiling for data reusable nodes. For CPU, we use a “SSRSRS”
+tile structure, where “S” stands for one tile level of space
+loops and “R” stands for one tile level of reduction loops.
+For example, in the matmul C(i, j) = Âk A[i, k] ⇥ B[k, j] , i and
+j are space loops and k is a reduction loop. The “SSRSRS”
+tile structure for matmul expands the original 3-level loop
+(i, j, k) into a 10-level loop (i0 , j0 , i1 , j1 , k0 , i 2 , j2 , k1 , i 3 , j3 ).
+Although we do not permute the loop order, this multi-level
+tiling can also cover some cases of reordering. For example,
+the above 10-level loop can be specialized to just a simple
+reorder (k0 , j2 , i3 ) by setting the length of other loops to one.
+The "SSRSRS" tile structure is general for compute-intensive
+dense operators (e.g., matmul, conv2d, conv3d) in deep learn-
+ing, because they all consist of space loops and reduction
+loops.
+
+
+
