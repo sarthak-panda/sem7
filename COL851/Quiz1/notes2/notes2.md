@@ -381,5 +381,21 @@ dense operators (e.g., matmul, conv2d, conv3d) in deep learn-
 ing, because they all consist of space loops and reduction
 loops.
 
+Rule 4 performs multi-level tiling and also fuses the fusible
+consumers. For example, we fuse the element-wise nodes
+(e.g., ReLU, bias add) into the tiled nodes (e.g., conv2d, mat-
+mul). Rule 5 adds a caching node if the current data-reusable
+node does not have a fusible consumer. For example, the fi-
+nal output node in a DAG does not have any consumer, so it
+directly writes results into main memory by default and this
+is inefficient due to the high latency of memory accesses. By
+adding a cache node, we introduce a new fusible consumer
+into the DAG, then rule 4 can be applied to fuse this newly
+added cache node into the final output node. With the cache
+node fused, now the final output node writes its results into a
+cache block, and the cache block will be written to the main
+memory at once when all data in the block is computed.
 
+Rule 6 can use rfactor [46] to factorize a reduction loop
+into a space loop to bring more parallelism.
 
