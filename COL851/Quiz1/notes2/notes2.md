@@ -399,3 +399,7 @@ memory at once when all data in the block is computed.
 Rule 6 can use rfactor [46] to factorize a reduction loop
 into a space loop to bring more parallelism.
 
+![](2025-08-17-05-46-35.png)
+
+![](2025-08-17-05-47-02.png)
+
