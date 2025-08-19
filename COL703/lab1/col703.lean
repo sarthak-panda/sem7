@@ -59,9 +59,23 @@ theorem nd_monday_incorrect :
 
 -- YOUR FUNCTION DEFINITION GOES HERE --
 
+def nextWorkingDay : day -> day
+  | day.monday => .tuesday
+  | .tuesday => .wednesday
+  | .wednesday => .thursday
+  | .thursday => .friday
+  | .friday => .monday
+  | .saturday => .monday
+  | .sunday => .monday
+
 -- Now, define and prove a theorem called nwd_fri_sun which states that the next working day after Friday is the same as the next working day after Sunday.
 
 -- YOUR THEOREM DEFINITION GOES HERE --
+
+theorem nwd_fri_sun:
+  (nextWorkingDay .friday= nextWorkingDay .sunday) :=
+  by
+    rfl
 
 ------------------------------------------
 
@@ -92,7 +106,7 @@ inductive myList (α : Type) where
 
 def myLength (α: Type): List α → Nat
   | List.nil => 0
-  | List.cons hd tl => (myLength α tl) + 1
+  | List.cons _ tl => (myLength α tl) + 1
 
 -- Note that (and you should get a warning about this) the 'hd' in that definition was unnecessary, since it is not even used in how the function is computed for the inductive case -- the inductive definition only depends on the actual value of tl. So we can, and should, remove hd from the left to make this definition clearer in the sense of not being dependent on the value of hd. Since the definition is agnostic to the actual value of hd, we can replace it by a placeholder standing for "any value of the right type", and in Lean, this placeholder is the undescore symbol (_). Since Lean contains an in-built definition of the List type, it also contains an in-built definition of length, which is (unimaginatively) called List.length.
 
@@ -100,7 +114,17 @@ def myLength (α: Type): List α → Nat
 
 -- YOUR ANSWER GOES HERE
 
--- Think about this: What would happen if instead of [[], ['a'], ['B']], I wanted to use [[], [], []]? Firstly, is this list of the same size as [1, 2, 3]? And if it is, try to state and prove the theorem in Lean, and see what you see as you step through in the InfoView.
+theorem eq_len_lists:
+  (myLength Nat [1, 2, 3] = myLength (List Char) [[], ['a'], ['B']])
+  :=
+  by
+  rfl
 
+-- Think about this: What would happen if instead of [[], ['a'], ['B']], I wanted to use [[], [], []]? Firstly, is this list of the same size as [1, 2, 3]? And if it is, try to state and prove the theorem in Lean, and see what you see as you step through in the InfoView.
+theorem eq_len_lists2:
+  (myLength Nat [1, 2, 3] = myLength (List Char) [[], [], []])
+  :=
+  by
+  rfl
 ------------------------------------------
 ------------------------------------------
