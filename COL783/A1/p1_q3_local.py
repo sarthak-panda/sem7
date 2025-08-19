@@ -10,7 +10,7 @@ def displayIntensityImage(img,file_name):
 	plt.axis('off')
 	plt.title(file_name)
 	plt.show()
-      
+
 def displayColorImage(img,file_name):
 	plt.figure(figsize=(8,6))
 	plt.imshow(img)           # skimage -> RGB, so show directly
