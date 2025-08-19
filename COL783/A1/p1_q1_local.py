@@ -189,3 +189,7 @@ if __name__ == "__main__":
 
 #python .\p1_q1.py .\testIMG2.jpg t2.jpg bilinear
 #python .\p1_q1.py .\testIMG2.jpg t2_n.jpg nearest
+#1137
+#1217
+#4
+#23
