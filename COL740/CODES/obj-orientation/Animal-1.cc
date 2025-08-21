@@ -62,9 +62,13 @@ int main() {
     std::vector<std::shared_ptr<Animal>> zoo;
 
     // All methods return shared_ptr<Animal> safely
+    std::cout<<bat.use_count()<<std::endl;
     zoo.push_back(bat->getSelf());
+    std::cout<<bat.use_count()<<std::endl;
     zoo.push_back(bat->clone()); // Returns shared_ptr<Bat>, implicitly converted
+    std::cout<<bat.use_count()<<std::endl;
     zoo.push_back(std::dynamic_pointer_cast<Animal>(bat));
+    std::cout<<bat.use_count()<<std::endl;
 
     for (const auto& animal : zoo) {
         std::cout << std::endl;

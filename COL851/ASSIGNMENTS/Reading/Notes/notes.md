@@ -62,3 +62,41 @@ of a thread block to reduce communication and shared memory reads/writes.
 2 BACKGROUND
 We provide some background on the performance characteristics and execution model of GPUs. We
 also describe the standard implementation of attention, as well as FLASHATTENTION
+
+2.1 HARDWARE CHARACTERISTICS
+GPU performance characteristics.
+The GPU consists of compute elements (e.g., floating point arith-
+metic units) and a memory hierarchy. Most modern GPUs contain specialized units to accelerate matrix
+multiply in low-precision (e.g., Tensor Cores on Nvidia GPUs for FP16/BF16 matrix multiply). The
+memory hierarchy comprise of high bandwidth memory (HBM), and on-chip SRAM (aka shared mem-
+ory). As an example, the A100 GPU has 40-80GB of high bandwidth memory (HBM) with bandwidth
+1.5-2.0TB/s and 192KB of on-chip SRAM per each of 108 streaming multiprocessors with bandwidth
+estimated around 19TB/s (Jia et al., 2018; Jia and Van Sandt, 2021). As the L2 cache is not directly
+controllable by the programmer, we focus on the HBM and SRAM for the purpose of this discussion.
+
+![](2025-08-21-16-18-42.png)
+
+Execution Model. GPUs have a massive number of threads to execute an operation (called a kernel).
+Threads are organized into thread blocks, which are scheduled to run on streaming multiprocessors
+(SMs). Within each thread blocks, threads are grouped into warps (a group of 32 threads). Threads
+within a warp can communicate by fast shuffle instructions or cooperate to perform matrix multiply.
+Warps within a thread block can communicate by reading from / writing to shared memory. Each
+kernel loads inputs from HBM to registers and SRAM, computes, then writes outputs to HBM.
+
+
+2.2 STANDARD ATTENTION IMPLEMENTATION
+
+![](2025-08-21-16-45-35.png)
+
+where softmax is applied row-wise.1 For multi-head attention (MHA), this same computation is
+performed in parallel across many heads, and parallel over the batch dimension (number of input
+sequences in a batch).
+
+![](2025-08-21-17-47-45.png)
+![](2025-08-21-17-49-32.png)
+
+2.3 FLASHATTENTION
+To speed up attention on hardware accelerators such as GPU, (Dao et al., 2022) proposes an algorithm
+to reduce the memory reads/writes while maintaining the same output (without approximation)
+
+2.3.1 FORWARD PASS
