@@ -100,89 +100,46 @@ def convolve(w, f, c=0, zeroPaddingNeeded=False, completeResult=False, kernel_is
     out = np.clip(out, 0.0, 255.0)
     return out.astype(np.uint8)
 
-# def laplacican(input_image_path):
-#     """
-#     Compute Laplacian (∇^2 f) of the image at input_image_path using the
-#     3x3 kernel and c = 128 by calling the existing `convolve` function.
-
-#     Saves output as <original_basename>_laplacian.png and displays both images.
-#     """
-#     # load image and convert to grayscale (8-bit)
-#     img = Image.open(input_image_path).convert('L')
-#     f = np.array(img, dtype=np.uint8)
-
-#     # 3x3 Laplacian kernel (4-neighbour version)
-#     lap_kernel = np.array([[0, 1, 0],
-#                            [1, -4, 1],
-#                            [0, 1, 0]], dtype=float)
-
-#     # call the convolve function you've defined earlier
-#     # c = 128 as requested; zeroPaddingNeeded and completeResult left as defaults
-#     g = convolve(lap_kernel, f, c=128)
-
-#     # prepare output path and save result
-#     base, _ = os.path.splitext(input_image_path)
-#     out_path = base + "_laplacian.png"
-#     out_img = Image.fromarray(g)
-#     out_img.save(out_path)
-
-#     # display original and result
-#     fig, axes = plt.subplots(1, 2, figsize=(10, 5))
-#     axes[0].imshow(f, cmap='gray', vmin=0, vmax=255)
-#     axes[0].set_title("Original (grayscale)")
-#     axes[0].axis('off')
-
-#     axes[1].imshow(g, cmap='gray', vmin=0, vmax=255)
-#     axes[1].set_title("Laplacian (c=128)")
-#     axes[1].axis('off')
-
-#     plt.tight_layout()
-#     plt.show()
-
-#     print(f"Laplacian saved to: {out_path}")
-
-def laplacian(input_image_path, loadFromNumpyData=False, numpy_array=None, c_display=128, save_out=True, display_matplotlib=False):
+def laplacican(input_image_path):
     """
-    Compute Laplacian l * f using the existing `convolve` function.
-    - If loadFromNumpyData==True, use numpy_array (2D uint8) as input and ignore input_image_path.
-    - Otherwise load image from input_image_path (grayscale).
-    - c_display: additive constant used when saving/displaying images (default 128).
-    Returns: (f_uint8, lap_uint8, out_path_or_None)
-    """
-    if loadFromNumpyData:
-        if numpy_array is None:
-            raise ValueError("loadFromNumpyData is True but numpy_array is None")
-        f = np.asarray(numpy_array, dtype=np.uint8)
-        base = "array_input"
-    else:
-        img = Image.open(input_image_path).convert('L')
-        f = np.array(img, dtype=np.uint8)
-        base = os.path.splitext(os.path.basename(input_image_path))[0]
+    Compute Laplacian (∇^2 f) of the image at input_image_path using the
+    3x3 kernel and c = 128 by calling the existing `convolve` function.
 
-    # 3x3 Laplacian (4-neighbour)
+    Saves output as <original_basename>_laplacian.png and displays both images.
+    """
+    # load image and convert to grayscale (8-bit)
+    img = Image.open(input_image_path).convert('L')
+    f = np.array(img, dtype=np.uint8)
+
+    # 3x3 Laplacian kernel (4-neighbour version)
     lap_kernel = np.array([[0, 1, 0],
-                           [1,-4, 1],
+                           [1, -4, 1],
                            [0, 1, 0]], dtype=float)
 
-    # Use zero padding here for consistency with gaussian operations
-    lap = convolve(lap_kernel, f, c=0, zeroPaddingNeeded=True, completeResult=False)
+    # call the convolve function you've defined earlier
+    # c = 128 as requested; zeroPaddingNeeded and completeResult left as defaults
+    g = convolve(lap_kernel, f, c=128)
 
-    out_path = None
-    if save_out:
-        folder = f"./LaplacianOutputs_{base}"
-        os.makedirs(folder, exist_ok=True)
-        out_path = os.path.join(folder, f"{base}_laplacian_c{c_display}.png")
-        # add c_display for visualization (center around 128)
-        vis = np.clip(lap.astype(np.int32) + int(c_display), 0, 255).astype(np.uint8)
-        Image.fromarray(vis).save(out_path)
+    # prepare output path and save result
+    base, _ = os.path.splitext(input_image_path)
+    out_path = base + "_laplacian.png"
+    out_img = Image.fromarray(g)
+    out_img.save(out_path)
 
-        if display_matplotlib:
-            plt.figure(figsize=(8,4))
-            plt.subplot(1,2,1); plt.imshow(f, cmap='gray', vmin=0, vmax=255); plt.title('Original'); plt.axis('off')
-            plt.subplot(1,2,2); plt.imshow(vis, cmap='gray', vmin=0, vmax=255); plt.title('Laplacian (c=%d)'%c_display); plt.axis('off')
-            plt.show()
+    # display original and result
+    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+    axes[0].imshow(f, cmap='gray', vmin=0, vmax=255)
+    axes[0].set_title("Original (grayscale)")
+    axes[0].axis('off')
 
-    return f, lap, out_path
+    axes[1].imshow(g, cmap='gray', vmin=0, vmax=255)
+    axes[1].set_title("Laplacian (c=128)")
+    axes[1].axis('off')
+
+    plt.tight_layout()
+    plt.show()
+
+    print(f"Laplacian saved to: {out_path}")
 
 
 def convolutionTest():
@@ -262,62 +219,29 @@ def gaussian_kernel_2d(sigma):
 # -----------------------
 # Filters using convolve
 # -----------------------
-# def gaussianFilter1(imagePath, sigma, out_dir=None):
-#     """
-#     Naive 2D Gaussian filter: build full 2D kernel and call convolve once.
-#     Uses zero padding always (zeroPaddingNeeded=True).
-#     Returns (output_uint8_HxW, elapsed_seconds, out_path).
-#     """
-#     # load grayscale image
-#     img = Image.open(imagePath).convert('L')
-#     f = np.array(img, dtype=np.uint8)
-#     H, W = f.shape
-
-#     # Build full 2D Gaussian kernel (assumes gaussian_kernel_2d defined)
-#     K = gaussian_kernel_2d(sigma)
-
-#     t0 = time.perf_counter()
-#     # use zero padding; single pass => same-size output
-#     g = convolve(K, f, c=0, zeroPaddingNeeded=True, completeResult=False)
-#     t1 = time.perf_counter()
-
-#     elapsed = t1 - t0
-
-#     # save result
-#     base = os.path.splitext(os.path.basename(imagePath))[0]
-#     folder = out_dir or f"./GaussianOutputs_{base}"
-#     os.makedirs(folder, exist_ok=True)
-#     out_path = os.path.join(folder, f"{base}_gauss2d_sigma{sigma:.2f}.png")
-#     Image.fromarray(g).save(out_path)
-
-#     return g, elapsed, out_path
-
-def gaussianFilter1(imagePath, sigma, out_dir=None, loadFromNumpyData=False, numpy_array=None):
+def gaussianFilter1(imagePath, sigma, out_dir=None):
     """
-    Full 2D Gaussian (naive) using zero padding always.
-    If loadFromNumpyData True, numpy_array must be provided (2D uint8).
-    Returns (smoothed_uint8_HxW, elapsed_seconds, out_path).
+    Naive 2D Gaussian filter: build full 2D kernel and call convolve once.
+    Uses zero padding always (zeroPaddingNeeded=True).
+    Returns (output_uint8_HxW, elapsed_seconds, out_path).
     """
-    if loadFromNumpyData:
-        if numpy_array is None:
-            raise ValueError("numpy_array required when loadFromNumpyData=True")
-        f = np.asarray(numpy_array, dtype=np.uint8)
-        base = "array_input"
-    else:
-        if imagePath is None:
-            raise ValueError("imagePath must be provided when loadFromNumpyData=False")
-        img = Image.open(imagePath).convert('L')
-        f = np.array(img, dtype=np.uint8)
-        base = os.path.splitext(os.path.basename(imagePath))[0]
+    # load grayscale image
+    img = Image.open(imagePath).convert('L')
+    f = np.array(img, dtype=np.uint8)
+    H, W = f.shape
 
-    K = gaussian_kernel_2d(sigma)  # from earlier
+    # Build full 2D Gaussian kernel (assumes gaussian_kernel_2d defined)
+    K = gaussian_kernel_2d(sigma)
+
     t0 = time.perf_counter()
-    # use zero padding as requested
+    # use zero padding; single pass => same-size output
     g = convolve(K, f, c=0, zeroPaddingNeeded=True, completeResult=False)
     t1 = time.perf_counter()
 
     elapsed = t1 - t0
 
+    # save result
+    base = os.path.splitext(os.path.basename(imagePath))[0]
     folder = out_dir or f"./GaussianOutputs_{base}"
     os.makedirs(folder, exist_ok=True)
     out_path = os.path.join(folder, f"{base}_gauss2d_sigma{sigma:.2f}.png")
@@ -571,6 +495,181 @@ def testGaussian(imagePath, sigma_list=None, out_root="./GaussianOutputs", compa
         "out_dir": out_dir,
         "plot_path": plot_path
     }
+
+def kernel_convolve(A, B):
+    """
+    Linear 2D convolution of kernel arrays A and B (both float ndarray).
+    Returns array of shape (hA+hB-1, wA+wB-1) as float64.
+    This computes C[p,q] = sum_{i,j} A[i,j] * B[p-i, q-j].
+    """
+    A = np.asarray(A, dtype=np.float64)
+    B = np.asarray(B, dtype=np.float64)
+    ha, wa = A.shape
+    hb, wb = B.shape
+    hc = ha + hb - 1
+    wc = wa + wb - 1
+    C = np.zeros((hc, wc), dtype=np.float64)
+    # For each element in A add scaled copy of B at offset (i,j)
+    for i in range(ha):
+        for j in range(wa):
+            C[i:i+hb, j:j+wb] += A[i, j] * B
+    return C
+
+def testLapGauss(imagePath=None, sigma_list=None, out_root="./LapGaussOutputs", compare_tol_max=2, compare_tol_sum=50, loadFromNumpyData=False, numpy_array=None):
+    """
+    For each sigma in sigma_list compute:
+      A = l * (g * f)
+      B = g * (l * f)
+      C = (l * g) * f
+    Use separable Gaussian wherever possible. Record runtimes for A,B,C,
+    compare outputs by max absolute diff and sum absolute diff.
+    Save visualization images (adds c=128 for display) into out_root_<imagebase>.
+    Plot runtime curves (3-methods).
+    Returns summary dict.
+    """
+    if sigma_list is None:
+        sigma_list = [1.0, 2.0, 4.0, 8.0, 12.0]
+
+    # load image/array once
+    if loadFromNumpyData:
+        if numpy_array is None:
+            raise ValueError("numpy_array required when loadFromNumpyData=True")
+        f = np.asarray(numpy_array, dtype=np.uint8)
+        base = "array_input"
+    else:
+        if imagePath is None:
+            raise ValueError("imagePath must be provided when loadFromNumpyData=False")
+        img = Image.open(imagePath).convert('L')
+        f = np.array(img, dtype=np.uint8)
+        base = os.path.splitext(os.path.basename(imagePath))[0]
+
+    H, W = f.shape
+    out_dir = os.path.join(out_root + "_" + base)
+    os.makedirs(out_dir, exist_ok=True)
+
+    # Laplacian kernel (float)
+    l_kernel = np.array([[0,1,0],[1,-4,1],[0,1,0]], dtype=float)
+
+    times_A = []
+    times_B = []
+    times_C = []
+    max_diffs_AB = []
+    sum_diffs_AB = []
+    max_diffs_AC = []
+    sum_diffs_AC = []
+    paths = []
+
+    print(f"Testing Laplacian-of-Gaussian permutations on {base}; outputs -> {out_dir}")
+
+    for sigma in sigma_list:
+        print(f"\n=== sigma = {sigma} ===")
+
+        # ---------- METHOD A: l * (g * f) ----------
+        t0 = time.perf_counter()
+        # use separable gaussian (horizontal full then vertical full -> crop)
+        g_row = gaussian_kernel_1d(sigma)   # row 1 x m
+        # first pass (horizontal) full
+        g_h_full = convolve(g_row, f, c=0, zeroPaddingNeeded=True, completeResult=True)
+        # second pass (vertical) full
+        g_full = convolve(g_row.flatten(), g_h_full, c=0, zeroPaddingNeeded=True, completeResult=True, kernel_is_column=True)
+        # crop to HxW
+        pad = g_row.shape[1] // 2
+        g_smoothed = g_full[pad:pad+H, pad:pad+W]
+        # apply Laplacian (use zero padding)
+        A = convolve(l_kernel, g_smoothed, c=0, zeroPaddingNeeded=True, completeResult=False)
+        t1 = time.perf_counter()
+        timeA = t1 - t0
+        times_A.append(timeA)
+        print(f"Method A (l * (g * f)) time: {timeA:.4f}s")
+
+        # ---------- METHOD B: g * (l * f) ----------
+        t0 = time.perf_counter()
+        # first apply Laplacian on original
+        lf = convolve(l_kernel, f, c=0, zeroPaddingNeeded=True, completeResult=False)
+        # then smooth lf with separable gaussian (same procedure)
+        g_row = gaussian_kernel_1d(sigma)
+        tmp_h_full = convolve(g_row, lf, c=0, zeroPaddingNeeded=True, completeResult=True)
+        tmp_full = convolve(g_row.flatten(), tmp_h_full, c=0, zeroPaddingNeeded=True, completeResult=True, kernel_is_column=True)
+        B = tmp_full[pad:pad+H, pad:pad+W]
+        t1 = time.perf_counter()
+        timeB = t1 - t0
+        times_B.append(timeB)
+        print(f"Method B (g * (l * f)) time: {timeB:.4f}s")
+
+        # ---------- METHOD C: (l * g) * f ----------
+        t0 = time.perf_counter()
+        # Get full 2D Gaussian kernel (we will convolve it with laplacian kernel to get combined kernel)
+        g2d = gaussian_kernel_2d(sigma)
+        # compute kernel L * G (linear convolution of kernel arrays)
+        # Note: kernel_convolve computes linear conv: (l * g)
+        LG = kernel_convolve(l_kernel, g2d)
+        # now apply combined kernel to image (use zero padding)
+        C = convolve(LG, f, c=0, zeroPaddingNeeded=True, completeResult=False)
+        t1 = time.perf_counter()
+        timeC = t1 - t0
+        times_C.append(timeC)
+        print(f"Method C ((l * g) * f) time: {timeC:.4f}s")
+
+        # ---------- comparisons ----------
+        diff_AB = (A.astype(np.int32) - B.astype(np.int32))
+        maxAB = int(np.max(np.abs(diff_AB)))
+        sumAB = int(np.sum(np.abs(diff_AB)))
+        max_diffs_AB.append(maxAB)
+        sum_diffs_AB.append(sumAB)
+
+        diff_AC = (A.astype(np.int32) - C.astype(np.int32))
+        maxAC = int(np.max(np.abs(diff_AC)))
+        sumAC = int(np.sum(np.abs(diff_AC)))
+        max_diffs_AC.append(maxAC)
+        sum_diffs_AC.append(sumAC)
+
+        print(f" max|A-B| = {maxAB}, sum|A-B| = {sumAB}")
+        print(f" max|A-C| = {maxAC}, sum|A-C| = {sumAC}")
+        if maxAB > compare_tol_max or sumAB > compare_tol_sum:
+            print(" WARNING: A and B differ beyond tolerance")
+        if maxAC > compare_tol_max or sumAC > compare_tol_sum:
+            print(" WARNING: A and C differ beyond tolerance")
+
+        # Save visualizations (add c=128 to center for display)
+        visA = np.clip(A.astype(np.int32) + 128, 0, 255).astype(np.uint8)
+        visB = np.clip(B.astype(np.int32) + 128, 0, 255).astype(np.uint8)
+        visC = np.clip(C.astype(np.int32) + 128, 0, 255).astype(np.uint8)
+        fnameA = os.path.join(out_dir, f"{base}_sigma{sigma:.2f}_A_l_gf.png")
+        fnameB = os.path.join(out_dir, f"{base}_sigma{sigma:.2f}_B_g_lf.png")
+        fnameC = os.path.join(out_dir, f"{base}_sigma{sigma:.2f}_C_lg_f.png")
+        Image.fromarray(visA).save(fnameA)
+        Image.fromarray(visB).save(fnameB)
+        Image.fromarray(visC).save(fnameC)
+        paths.append((fnameA, fnameB, fnameC))
+
+    # Plot runtimes for the three methods
+    plt.figure(figsize=(8,5))
+    plt.plot(sigma_list, times_A, marker='o', label='l * (g * f)')
+    plt.plot(sigma_list, times_B, marker='o', label='g * (l * f)')
+    plt.plot(sigma_list, times_C, marker='o', label='(l * g) * f')
+    plt.xlabel('sigma')
+    plt.ylabel('compute time (s)')
+    plt.title(f'Lap(Gauss) permutations runtimes (image={base})')
+    plt.grid(True)
+    plt.legend()
+    plot_path = os.path.join(out_dir, f"{base}_lapgauss_times.png")
+    plt.savefig(plot_path, dpi=150)
+    plt.show()
+
+    summary = {
+        "sigma_list": sigma_list,
+        "times_A": times_A,
+        "times_B": times_B,
+        "times_C": times_C,
+        "max_diffs_AB": max_diffs_AB,
+        "sum_diffs_AB": sum_diffs_AB,
+        "max_diffs_AC": max_diffs_AC,
+        "sum_diffs_AC": sum_diffs_AC,
+        "image_paths": paths,
+        "plot_path": plot_path,
+        "out_dir": out_dir
+    }
+    return summary
 
 if __name__ == "__main__":
     # convolutionTest()
