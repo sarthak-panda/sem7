@@ -5,6 +5,86 @@ import matplotlib.pyplot as plt
 import time
 import math
 
+def convolve_float(w, f, c=0.0, zeroPaddingNeeded=False, completeResult=False,
+                   kernel_is_column=None):
+    """
+    Convolution like `convolve` but:
+      - works in float64 throughout
+      - DOES NOT clip to [0,255] and DOES NOT cast to uint8
+      - returns a float64 numpy array (full or same size depending on completeResult)
+    Other args mirror your convolve signature (kernel_is_column used for 1D kernel).
+    """
+    w = np.asarray(w, dtype=np.float64)
+    f = np.asarray(f, dtype=np.float64)
+
+    # Interpret 1D kernel according to kernel_is_column
+    if w.ndim == 1:
+        if kernel_is_column is None or kernel_is_column is False:
+            w = w.reshape(1, -1)
+        else:
+            w = w.reshape(-1, 1)
+
+    # Interpret 1D image as column (existing behaviour)
+    if f.ndim == 1:
+        f = f.reshape(-1, 1)
+
+    if f.ndim != 2 or w.ndim != 2:
+        raise ValueError("f and w must be 1D or 2D arrays (grayscale kernels/images).")
+
+    H, W = f.shape
+    kh, kw = w.shape
+    if kh == 0 or kw == 0:
+        raise ValueError("Kernel must have non-zero shape.")
+
+    # Flip kernel for convolution
+    w_flipped = np.flip(np.flip(w, axis=0), axis=1)
+
+    pad_mode = 'constant' if zeroPaddingNeeded else 'reflect'
+
+    if not completeResult:
+        pad_top = kh // 2
+        pad_bottom = kh - pad_top - 1
+        pad_left = kw // 2
+        pad_right = kw - pad_left - 1
+
+        if pad_mode == 'constant':
+            padded = np.pad(f, pad_width=((pad_top, pad_bottom), (pad_left, pad_right)),
+                            mode='constant', constant_values=0.0)
+        else:
+            padded = np.pad(f, pad_width=((pad_top, pad_bottom), (pad_left, pad_right)),
+                            mode='reflect')
+
+        out_h, out_w = H, W
+        out = np.empty((out_h, out_w), dtype=np.float64)
+        for y in range(out_h):
+            for x in range(out_w):
+                patch = padded[y:y+kh, x:x+kw]
+                out[y, x] = np.sum(patch * w_flipped)
+
+    else:
+        pad_top = kh - 1
+        pad_bottom = kh - 1
+        pad_left = kw - 1
+        pad_right = kw - 1
+
+        if pad_mode == 'constant':
+            padded = np.pad(f, pad_width=((pad_top, pad_bottom), (pad_left, pad_right)),
+                            mode='constant', constant_values=0.0)
+        else:
+            padded = np.pad(f, pad_width=((pad_top, pad_bottom), (pad_left, pad_right)),
+                            mode='reflect')
+
+        full_h = H + kh - 1
+        full_w = W + kw - 1
+        out = np.empty((full_h, full_w), dtype=np.float64)
+        for y in range(full_h):
+            for x in range(full_w):
+                patch = padded[y:y+kh, x:x+kw]
+                out[y, x] = np.sum(patch * w_flipped)
+
+    out = out + float(c)
+    return out  # float64, no clipping, no cast
+
 def convolve(w, f, c=0, zeroPaddingNeeded=False, completeResult=False, kernel_is_column=None):
     """
     Convolve kernel w with image f, add scalar c, return uint8 result.
@@ -564,19 +644,68 @@ def testLapGauss(imagePath=None, sigma_list=None, out_root="./LapGaussOutputs", 
     for sigma in sigma_list:
         print(f"\n=== sigma = {sigma} ===")
 
+        # # ---------- METHOD A: l * (g * f) ----------
+        # t0 = time.perf_counter()
+        # # use separable gaussian (horizontal full then vertical full -> crop)
+        # g_row = gaussian_kernel_1d(sigma)   # row 1 x m
+        # # first pass (horizontal) full
+        # g_h_full = convolve(g_row, f, c=0, zeroPaddingNeeded=True, completeResult=True)
+        # # second pass (vertical) full
+        # g_full = convolve(g_row.flatten(), g_h_full, c=0, zeroPaddingNeeded=True, completeResult=True, kernel_is_column=True)
+        # # crop to HxW
+        # pad = g_row.shape[1] // 2
+        # g_smoothed = g_full[pad:pad+H, pad:pad+W]
+        # # apply Laplacian (use zero padding)
+        # A = convolve(l_kernel, g_smoothed, c=0, zeroPaddingNeeded=True, completeResult=False)
+        # t1 = time.perf_counter()
+        # timeA = t1 - t0
+        # times_A.append(timeA)
+        # print(f"Method A (l * (g * f)) time: {timeA:.4f}s")
+
+        # # ---------- METHOD B: g * (l * f) ----------
+        # t0 = time.perf_counter()
+        # # first apply Laplacian on original
+        # lf = convolve(l_kernel, f, c=0, zeroPaddingNeeded=True, completeResult=False)
+        # # then smooth lf with separable gaussian (same procedure)
+        # g_row = gaussian_kernel_1d(sigma)
+        # tmp_h_full = convolve(g_row, lf, c=0, zeroPaddingNeeded=True, completeResult=True)
+        # tmp_full = convolve(g_row.flatten(), tmp_h_full, c=0, zeroPaddingNeeded=True, completeResult=True, kernel_is_column=True)
+        # B = tmp_full[pad:pad+H, pad:pad+W]
+        # t1 = time.perf_counter()
+        # timeB = t1 - t0
+        # times_B.append(timeB)
+        # print(f"Method B (g * (l * f)) time: {timeB:.4f}s")
+
+        # # ---------- METHOD C: (l * g) * f ----------
+        # t0 = time.perf_counter()
+        # # Get full 2D Gaussian kernel (we will convolve it with laplacian kernel to get combined kernel)
+        # g2d = gaussian_kernel_2d(sigma)
+        # # compute kernel L * G (linear convolution of kernel arrays)
+        # # Note: kernel_convolve computes linear conv: (l * g)
+        # LG = kernel_convolve(l_kernel, g2d)
+        # # now apply combined kernel to image (use zero padding)
+        # C = convolve(LG, f, c=0, zeroPaddingNeeded=True, completeResult=False)
+        # t1 = time.perf_counter()
+        # timeC = t1 - t0
+        # times_C.append(timeC)
+        # print(f"Method C ((l * g) * f) time: {timeC:.4f}s")
+
         # ---------- METHOD A: l * (g * f) ----------
         t0 = time.perf_counter()
         # use separable gaussian (horizontal full then vertical full -> crop)
         g_row = gaussian_kernel_1d(sigma)   # row 1 x m
-        # first pass (horizontal) full
-        g_h_full = convolve(g_row, f, c=0, zeroPaddingNeeded=True, completeResult=True)
-        # second pass (vertical) full
-        g_full = convolve(g_row.flatten(), g_h_full, c=0, zeroPaddingNeeded=True, completeResult=True, kernel_is_column=True)
-        # crop to HxW
-        pad = g_row.shape[1] // 2
+        m = g_row.shape[1]
+        pad = m // 2
+
+        # first pass (horizontal) full — use float convolution to avoid intermediate quantization
+        g_h_full = convolve_float(g_row, f, c=0.0, zeroPaddingNeeded=True, completeResult=True)
+        # second pass (vertical) full — interpret kernel as column for second pass
+        g_full = convolve_float(g_row.flatten(), g_h_full, c=0.0,
+                                zeroPaddingNeeded=True, completeResult=True, kernel_is_column=True)
+        # crop to HxW (still float)
         g_smoothed = g_full[pad:pad+H, pad:pad+W]
-        # apply Laplacian (use zero padding)
-        A = convolve(l_kernel, g_smoothed, c=0, zeroPaddingNeeded=True, completeResult=False)
+        # apply Laplacian (use float convolution)
+        A = convolve_float(l_kernel, g_smoothed, c=0.0, zeroPaddingNeeded=True, completeResult=False)
         t1 = time.perf_counter()
         timeA = t1 - t0
         times_A.append(timeA)
@@ -584,13 +713,16 @@ def testLapGauss(imagePath=None, sigma_list=None, out_root="./LapGaussOutputs", 
 
         # ---------- METHOD B: g * (l * f) ----------
         t0 = time.perf_counter()
-        # first apply Laplacian on original
-        lf = convolve(l_kernel, f, c=0, zeroPaddingNeeded=True, completeResult=False)
-        # then smooth lf with separable gaussian (same procedure)
+        # first apply Laplacian on original (float)
+        lf = convolve_float(l_kernel, f, c=0.0, zeroPaddingNeeded=True, completeResult=False)
+        # then smooth lf with separable gaussian (float full passes)
         g_row = gaussian_kernel_1d(sigma)
-        tmp_h_full = convolve(g_row, lf, c=0, zeroPaddingNeeded=True, completeResult=True)
-        tmp_full = convolve(g_row.flatten(), tmp_h_full, c=0, zeroPaddingNeeded=True, completeResult=True, kernel_is_column=True)
-        B = tmp_full[pad:pad+H, pad:pad+W]
+        m = g_row.shape[1]
+        pad = m // 2
+        tmp_h_full = convolve_float(g_row, lf, c=0.0, zeroPaddingNeeded=True, completeResult=True)
+        tmp_full = convolve_float(g_row.flatten(), tmp_h_full, c=0.0,
+                                zeroPaddingNeeded=True, completeResult=True, kernel_is_column=True)
+        B = tmp_full[pad:pad+H, pad:pad+W]   # float
         t1 = time.perf_counter()
         timeB = t1 - t0
         times_B.append(timeB)
@@ -598,13 +730,12 @@ def testLapGauss(imagePath=None, sigma_list=None, out_root="./LapGaussOutputs", 
 
         # ---------- METHOD C: (l * g) * f ----------
         t0 = time.perf_counter()
-        # Get full 2D Gaussian kernel (we will convolve it with laplacian kernel to get combined kernel)
+        # Get full 2D Gaussian kernel
         g2d = gaussian_kernel_2d(sigma)
-        # compute kernel L * G (linear convolution of kernel arrays)
-        # Note: kernel_convolve computes linear conv: (l * g)
+        # compute kernel L * G (linear convolution of kernel arrays) - float
         LG = kernel_convolve(l_kernel, g2d)
-        # now apply combined kernel to image (use zero padding)
-        C = convolve(LG, f, c=0, zeroPaddingNeeded=True, completeResult=False)
+        # now apply combined kernel to image (float)
+        C = convolve_float(LG, f, c=0.0, zeroPaddingNeeded=True, completeResult=False)
         t1 = time.perf_counter()
         timeC = t1 - t0
         times_C.append(timeC)
@@ -631,9 +762,12 @@ def testLapGauss(imagePath=None, sigma_list=None, out_root="./LapGaussOutputs", 
             print(" WARNING: A and C differ beyond tolerance")
 
         # Save visualizations (add c=128 to center for display)
-        visA = np.clip(A.astype(np.int32) + 128, 0, 255).astype(np.uint8)
-        visB = np.clip(B.astype(np.int32) + 128, 0, 255).astype(np.uint8)
-        visC = np.clip(C.astype(np.int32) + 128, 0, 255).astype(np.uint8)
+        # visA = np.clip(A.astype(np.int32) + 128, 0, 255).astype(np.uint8)
+        # visB = np.clip(B.astype(np.int32) + 128, 0, 255).astype(np.uint8)
+        # visC = np.clip(C.astype(np.int32) + 128, 0, 255).astype(np.uint8)
+        visA = np.clip((A + 128.0), 0.0, 255.0).astype(np.uint8)
+        visB = np.clip((B + 128.0), 0.0, 255.0).astype(np.uint8)
+        visC = np.clip((C + 128.0), 0.0, 255.0).astype(np.uint8)
         fnameA = os.path.join(out_dir, f"{base}_sigma{sigma:.2f}_A_l_gf.png")
         fnameB = os.path.join(out_dir, f"{base}_sigma{sigma:.2f}_B_g_lf.png")
         fnameC = os.path.join(out_dir, f"{base}_sigma{sigma:.2f}_C_lg_f.png")
@@ -674,4 +808,5 @@ def testLapGauss(imagePath=None, sigma_list=None, out_root="./LapGaussOutputs", 
 if __name__ == "__main__":
     # convolutionTest()
     # laplacican("./testIMG1.jpg")
-    testGaussian("./testIMG1.jpg", sigma_list=[1,2,4,8,12,20])
+    # testGaussian("./testIMG1.jpg", sigma_list=[1,2,4,8,12,20])
+    testLapGauss(imagePath="./testIMG1.jpg", sigma_list=[1,2,4,8,12,20])
