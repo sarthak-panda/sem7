@@ -4,10 +4,12 @@ import os
 import matplotlib.pyplot as plt
 import time
 import math
-def convolve_float(w, f, c=0.0, zeroPaddingNeeded=False, completeResult=False,
-                   kernel_is_column=None):
+def convolve(w, f, c=0, zeroPaddingNeeded=False, completeResult=False, kernel_is_column=None, isFloat=False):
     w = np.asarray(w, dtype=np.float64)
-    f = np.asarray(f, dtype=np.float64)
+    if isFloat:
+        f = np.asarray(f, dtype=np.float64)
+    else:
+        f = np.asarray(f)
     if w.ndim == 1:
         if kernel_is_column is None or kernel_is_column is False:
             w = w.reshape(1, -1)
@@ -28,65 +30,11 @@ def convolve_float(w, f, c=0.0, zeroPaddingNeeded=False, completeResult=False,
         pad_bottom = kh - pad_top - 1
         pad_left = kw // 2
         pad_right = kw - pad_left - 1
-        if pad_mode == 'constant':
-            padded = np.pad(f, pad_width=((pad_top, pad_bottom), (pad_left, pad_right)),
-                            mode='constant', constant_values=0.0)
-        else:
-            padded = np.pad(f, pad_width=((pad_top, pad_bottom), (pad_left, pad_right)),
-                            mode='reflect')
-        out_h, out_w = H, W
-        out = np.empty((out_h, out_w), dtype=np.float64)
-        for y in range(out_h):
-            for x in range(out_w):
-                patch = padded[y:y+kh, x:x+kw]
-                out[y, x] = np.sum(patch * w_flipped)
-    else:
-        pad_top = kh - 1
-        pad_bottom = kh - 1
-        pad_left = kw - 1
-        pad_right = kw - 1
-        if pad_mode == 'constant':
-            padded = np.pad(f, pad_width=((pad_top, pad_bottom), (pad_left, pad_right)),
-                            mode='constant', constant_values=0.0)
-        else:
-            padded = np.pad(f, pad_width=((pad_top, pad_bottom), (pad_left, pad_right)),
-                            mode='reflect')
-        full_h = H + kh - 1
-        full_w = W + kw - 1
-        out = np.empty((full_h, full_w), dtype=np.float64)
-        for y in range(full_h):
-            for x in range(full_w):
-                patch = padded[y:y+kh, x:x+kw]
-                out[y, x] = np.sum(patch * w_flipped)
-    out = out + float(c)
-    return out
-def convolve(w, f, c=0, zeroPaddingNeeded=False, completeResult=False, kernel_is_column=None):
-    w = np.asarray(w, dtype=np.float64)
-    f = np.asarray(f)
-    if w.ndim == 1:
-        if kernel_is_column is None or kernel_is_column is False:
-            w = w.reshape(1, -1)
-        else:
-            w = w.reshape(-1, 1)
-    if f.ndim == 1:
-        f = f.reshape(-1, 1)
-    if f.ndim != 2 or w.ndim != 2:
-        raise ValueError("f and w must be 1D or 2D arrays (grayscale kernels/images).")
-    H, W = f.shape
-    kh, kw = w.shape
-    if kh == 0 or kw == 0:
-        raise ValueError("Kernel must have non-zero shape.")
-    w_flipped = np.flip(np.flip(w, axis=0), axis=1)
-    pad_mode = 'constant' if zeroPaddingNeeded else 'reflect'
-    if not completeResult:
-        pad_top = kh // 2
-        pad_bottom = kh - pad_top - 1
-        pad_left = kw // 2
-        pad_right = kw - pad_left - 1
+        const_val = 0.0 if isFloat else 0
         if pad_mode == 'constant':
             padded = np.pad(f.astype(np.float64),
                             pad_width=((pad_top, pad_bottom), (pad_left, pad_right)),
-                            mode='constant', constant_values=0)
+                            mode='constant', constant_values=const_val)
         else:
             padded = np.pad(f.astype(np.float64),
                             pad_width=((pad_top, pad_bottom), (pad_left, pad_right)),
@@ -102,10 +50,11 @@ def convolve(w, f, c=0, zeroPaddingNeeded=False, completeResult=False, kernel_is
         pad_bottom = kh - 1
         pad_left = kw - 1
         pad_right = kw - 1
+        const_val = 0.0 if isFloat else 0
         if pad_mode == 'constant':
             padded = np.pad(f.astype(np.float64),
                             pad_width=((pad_top, pad_bottom), (pad_left, pad_right)),
-                            mode='constant', constant_values=0)
+                            mode='constant', constant_values=const_val)
         else:
             padded = np.pad(f.astype(np.float64),
                             pad_width=((pad_top, pad_bottom), (pad_left, pad_right)),
@@ -118,8 +67,11 @@ def convolve(w, f, c=0, zeroPaddingNeeded=False, completeResult=False, kernel_is
                 patch = padded[y:y+kh, x:x+kw]
                 out[y, x] = np.sum(patch * w_flipped)
     out = out + float(c)
-    out = np.clip(out, 0.0, 255.0)
-    return out.astype(np.uint8)
+    if isFloat:
+        return out
+    else:
+        out = np.clip(out, 0.0, 255.0)
+        return out.astype(np.uint8)
 def laplacican(input_image_path):
     img = Image.open(input_image_path).convert('L')
     f = np.array(img, dtype=np.uint8)
@@ -337,23 +289,23 @@ def testLapGauss(imagePath=None, sigma_list=None, out_root="./LapGaussOutputs", 
         g_row = gaussian_kernel_1d(sigma)
         m = g_row.shape[1]
         pad = m // 2
-        g_h_full = convolve_float(g_row, f, c=0.0, zeroPaddingNeeded=True, completeResult=True)
-        g_full = convolve_float(g_row.flatten(), g_h_full, c=0.0,
-                                zeroPaddingNeeded=True, completeResult=True, kernel_is_column=True)
+        g_h_full = convolve(g_row, f, c=0.0, zeroPaddingNeeded=True, completeResult=True, isFloat=True)
+        g_full = convolve(g_row.flatten(), g_h_full, c=0.0,
+                                zeroPaddingNeeded=True, completeResult=True, kernel_is_column=True, isFloat=True)
         g_smoothed = g_full[pad:pad+H, pad:pad+W]
-        A = convolve_float(l_kernel, g_smoothed, c=0.0, zeroPaddingNeeded=True, completeResult=False)
+        A = convolve(l_kernel, g_smoothed, c=0.0, zeroPaddingNeeded=True, completeResult=False, isFloat=True)
         t1 = time.perf_counter()
         timeA = t1 - t0
         times_A.append(timeA)
         print(f"Method A (l * (g * f)) time: {timeA:.4f}s")
         t0 = time.perf_counter()
-        lf = convolve_float(l_kernel, f, c=0.0, zeroPaddingNeeded=True, completeResult=False)
+        lf = convolve(l_kernel, f, c=0.0, zeroPaddingNeeded=True, completeResult=False, isFloat=True)
         g_row = gaussian_kernel_1d(sigma)
         m = g_row.shape[1]
         pad = m // 2
-        tmp_h_full = convolve_float(g_row, lf, c=0.0, zeroPaddingNeeded=True, completeResult=True)
-        tmp_full = convolve_float(g_row.flatten(), tmp_h_full, c=0.0,
-                                zeroPaddingNeeded=True, completeResult=True, kernel_is_column=True)
+        tmp_h_full = convolve(g_row, lf, c=0.0, zeroPaddingNeeded=True, completeResult=True, isFloat=True)
+        tmp_full = convolve(g_row.flatten(), tmp_h_full, c=0.0,
+                                zeroPaddingNeeded=True, completeResult=True, kernel_is_column=True, isFloat=True)
         B = tmp_full[pad:pad+H, pad:pad+W]
         t1 = time.perf_counter()
         timeB = t1 - t0
@@ -362,7 +314,7 @@ def testLapGauss(imagePath=None, sigma_list=None, out_root="./LapGaussOutputs", 
         t0 = time.perf_counter()
         g2d = gaussian_kernel_2d(sigma)
         LG = kernel_convolve(l_kernel, g2d)
-        C = convolve_float(LG, f, c=0.0, zeroPaddingNeeded=True, completeResult=False)
+        C = convolve(LG, f, c=0.0, zeroPaddingNeeded=True, completeResult=False, isFloat=True)
         t1 = time.perf_counter()
         timeC = t1 - t0
         times_C.append(timeC)
