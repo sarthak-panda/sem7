@@ -491,4 +491,7 @@ def testLapGauss(
 
 
 if __name__ == "__main__":
+    convolutionTest()
+    laplacican("./testIMG1.jpg")
+    testGaussian("./testIMG1.jpg", sigma_list=[1,2,4,8,12,20])
     testLapGauss(imagePath="./testIMG1.jpg", sigma_list=[1, 2, 4, 8, 12, 20])
