@@ -368,6 +368,7 @@ def testLapGauss(
     print(f"Testing Laplacian-of-Gaussian permutations on {base}; outputs -> {out_dir}")
     for sigma in sigma_list:
         print(f"\n=== sigma = {sigma} ===")
+        # Method A
         t0 = time.perf_counter()
         g_row = gaussian_kernel_1d(sigma)
         m = g_row.shape[1]
@@ -397,6 +398,7 @@ def testLapGauss(
         timeA = t1 - t0
         times_A.append(timeA)
         print(f"Method A (l * (g * f)) time: {timeA:.4f}s")
+        # Method B
         t0 = time.perf_counter()
         lf = convolve(
             l_kernel,
@@ -426,6 +428,7 @@ def testLapGauss(
         timeB = t1 - t0
         times_B.append(timeB)
         print(f"Method B (g * (l * f)) time: {timeB:.4f}s")
+        # Method C
         t0 = time.perf_counter()
         g2d = gaussian_kernel_2d(sigma)
         LG = kernel_convolve(l_kernel, g2d)
@@ -436,6 +439,7 @@ def testLapGauss(
         timeC = t1 - t0
         times_C.append(timeC)
         print(f"Method C ((l * g) * f) time: {timeC:.4f}s")
+        # Stats
         diff_AB = A.astype(np.int32) - B.astype(np.int32)
         maxAB = int(np.max(np.abs(diff_AB)))
         sumAB = int(np.sum(np.abs(diff_AB)))
