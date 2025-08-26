@@ -87,7 +87,7 @@ theorem len_prep_plus_one_try2 :
 
 -- YOUR ANSWER GOES HERE
 
-theorem len_prep_longer_try0:--to ask the name
+theorem len_prep_longer:
   ∀ α : Type, ∀ l1 l2 : List α, ∀ n : α, ∀ len1 len2 : Nat,
     (List.length l1 = len1) ∧ (List.length l2 = len2) ∧ (l2 = n::l1) → len1<len2 :=
 by
@@ -104,7 +104,7 @@ by
   rw [← h2]
   simp[h3]
 -- So we know how to break down a conjunctive hypothesis. What if the conjunction appears on the right hand side, as part of the goal?
-
+/-
 theorem len_prep_longer :
   ∀ α, ∀ l1 l2 : List α, ∀ n : α,
     l2 = (n :: l1) -> List.length l2 > 0 ∧ List.length l2 > List.length l1 :=
@@ -121,7 +121,7 @@ theorem len_prep_longer :
     {
       simp [h]
     }
-
+-/
 -- Lists are one of the most useful structures in Lean. It is good to know what operations are defined on lists, which you can do by typing List. and finding the list of options the autocomplete dropdown gives you (if you have the right VSCode extension installed). One very helpful function is List.contains. One can also use \in (the set membership operator ∈) as shorthand for List.contains.
 
 #check List.contains
@@ -134,7 +134,6 @@ theorem len_prep_longer :
 
 -- YOUR THEOREM STATEMENT GOES HERE
 theorem len_sup_long (l1 l2 : List Nat)
-  (hnodup : l1.Nodup) -- l1 should not have duplicate elements
   (h : ∀ x, x ∈ l1 → x ∈ l2) : -- every element of l1 is a member of l2
   l2.length ≥ l1.length := by
   sorry
@@ -172,6 +171,7 @@ theorem append_len_greater:
   ∀ α : Type, ∀ l1 l2 : List α,
   List.length (List.append l1 l2) ≥ List.length l1 ∧ List.length (List.append l1 l2) ≥ List.length l2 :=
   by
+  
   intro α l1 l2
   rw [append_len α l1 l2]
   simp
