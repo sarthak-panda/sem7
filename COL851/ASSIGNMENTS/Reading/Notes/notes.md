@@ -206,5 +206,36 @@ to sum the gradients dK and dV across different heads that were implicitly dupli
 
 3.2 PARALLELISM
 
+The first version of FLASHATTENTION parallelizes over batch size and number of heads.
+We use
+1 thread block to process one attention head, and there are overall batch size*number of heads thread
+blocks.
+Each thread block is scheduled to run on a streaming multiprocessor (SM), and there are 108
+of these SMs on an A100 GPU for example. This scheduling is efficient when this number is large
+(say>= 80), since we can effectively use almost all of the compute resources on the GPU.
 
+In the case of long sequences (which usually means small batch sizes or small number of heads[<---BUT WHY--->]), to
+make better use of the multiprocessors on the GPU, we now additionally parallelize over the sequence
+length dimension. This results in significant speedup for this regime.
 
+Forward pass. We see that the outer loop (over sequence length) is embarrassingly parallel, and we
+schedule them on different thread blocks that do not need to communicate with each other. We also
+parallelize over the batch dimension and number of heads dimension, as done in FLASHATTENTION.
+The increased parallelism over sequence length helps improve occupancy (fraction of GPU resources
+being used) when the batch size and number of heads are small, leading to speedup in this case.
+
+![](2025-08-28-20-50-47.png)
+
+Decoding. During LLM inference, most of the time is spent on iterative decoding, where one token
+is predicted at a time. The bottleneck for the attention operation during decoding is different from that
+during training or prefill (prompt processing), because the query length is very short (often query length
+is 1 since only the new extra token is attending to all the previous tokens, stored in the KV cache). As a
+ result, the bottleneck is no longer the read/write of intermediate matrices the scores QK^T and attention
+probabilities softmax(QK^T). Instead, the bottleneck is to load the KV cache as quickly as possible.
+
+To accommodate this setting, we split the KV cache loading among different thread blocks, to
+increase occupancy and saturate the HBM bandwidth. However, since the thread blocks cannot easily
+communicate with each other, we write intermediate results to HBM, then call a separate kernel to
+reduce the results and produce final output.
+
+3.3 WORK PARTITIONING BETWEEN WARPS
