@@ -239,3 +239,47 @@ communicate with each other, we write intermediate results to HBM, then call a s
 reduce the results and produce final output.
 
 3.3 WORK PARTITIONING BETWEEN WARPS
+As Section 3.2 describe how we schedule thread blocks, even within each thread block, we also have
+to decide how to partition the work between different warps. We typically use 4 or 8 warps per thread
+block, and the partitioning is described in Fig 3
+
+Forward pass. For each block, FLASHATTENTION splits K and V across 4 warps while keeping
+Q accessible by all warps. Each warp multiplies to get a slice of QK^T, then they need to multiply
+with a slice of V and communicate to add up the result. This is referred to as the 'split-K' scheme.
+However, this is inefficient since all warps need to write their intermediate results out to shared memory,
+synchronize, then add up the intermediate results. These shared memory reads/writes slow down the
+forward pass in FLASHATTENTION.
+In FLASHATTENTION-2, we instead split Q across 4 warps while keeping K and V accessible by all
+warps. After each warp performs matrix multiply to get a slice of QK^T, they just need to multiply with
+their shared slice of V to get their corresponding slice of the output. There is no need for communication
+between warps. The reduction in shared memory reads/writes yields speedup
+
+![](2025-08-29-02-10-42.png)
+
+Backward pass. Similarly for the backward pass, we choose to partition the warps to avoid the
+“split-K” scheme. However, it still requires some synchronization due to the more complicated
+dependency between all the different inputs and gradients QKVOdOdQdKdV. Nevertheless,
+avoiding “split-K” reduces shared memory reads/writes and again yields speedup
+
+Tuning block sizes Increasing block sizes generally reduces shared memory loads/stores, but increases
+the number of registers required and the total amount of shared memory. Past a certain block size,
+register spilling causes significant slowdown, or the amount of shared memory required is larger
+than what the GPU has available, and the kernel cannot run at all. Typically we choose blocks of size
+{64,128}*{64,128}, depending on the head dimension 𝑑 and the device shared memory size.
+We manually tune for each head dimensions since there are essentially only 4 choices for block sizes,
+but this could benefit from auto-tuning to avoid this manual labor. We leave this to future work.
+
+4 EMPIRICAL VALIDATION
+
+4.1 BENCHMARKING ATTENTION FOR TRAINING
+
+![](2025-08-29-03-14-59.png)
+
+With causal mask, we divide this number by 2 to account for the fact that approximately only half
+of the entries are calculated. To get the FLOPs of the backward pass, we multiply the forward pass
+FLOPs by 2.5 (since there are 2 matmuls in the forward pass and 5 matmuls in the backward pass,
+due to recomputation)
+
+4.2 BENCHMARKING ATTENTION FOR INFERENCE
+
+
