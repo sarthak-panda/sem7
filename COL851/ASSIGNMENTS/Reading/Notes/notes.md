@@ -100,3 +100,52 @@ To speed up attention on hardware accelerators such as GPU, (Dao et al., 2022) p
 to reduce the memory reads/writes while maintaining the same output (without approximation)
 
 2.3.1 FORWARD PASS
+
+FLASHATTENTION applies the classical technique of tiling to reduce memory IOs, by (1) loading
+blocks of inputs from HBM to SRAM, (2) computing attention with respect to that block, and then (3)
+updating the output without writing the large intermediate matrices S and P to HBM. 
+
+As the softmax
+couples entire rows or blocks of row, online softmax (Milakov and Gimelshein, 2018; Rabe and Staats,
+2021) can split the attention computation into blocks, and rescale the output of each block to finally get
+the right result (with no approximation). 
+
+By significantly reducing the amount of memory reads/writes,
+FLASHATTENTION yields 2-4x wall-clock speedup over optimized baseline attention implementations.
+
+![](2025-08-28-00-05-10.png)
+
+We show how FLASHATTENTION uses online softmax to enable tiling (Fig. 1) to reduce memory
+reads/writes.
+
+![](2025-08-28-00-14-51.png)
+
+Figure 1: Diagram of how FLASHATTENTION forward pass is performed, when the key K is partitioned
+into two blocks and the value V is also partitioned into two blocks. By computing attention with respect
+to each block and rescaling the output, we get the right answer at the end, while avoiding expensive
+memory reads/writes of the intermediate matrices S and P. We simplify the diagram, omitting the step
+in softmax that subtracts each element by the row-wise max.
+
+2.3.2 BACKWARD PASS
+
+In the backward pass, by re-computing the values of the attention matrices S and P once blocks
+of inputs Q, K, V are already loaded to SRAM, FLASHATTENTION avoids having to store large
+intermediate values. By not having to save the large matrices S and P of size 𝑁 x𝑁, FLASHATTENTION
+yields 10-20x memory saving depending on sequence length (memory required in linear in sequence
+length 𝑁 instead of quadratic). The backward pass also achieves 2-4x wall-clock speedup due to
+reduce memory reads/writes.
+
+The backward pass applies tiling to the equations in Section 2.2. Though the backward pass is simpler
+than the forward pass conceptually (there is no softmax rescaling), the implementation is significantly
+more involved. This is because there are more values to be kept in SRAM to perform 5 matrix multiples
+in the backward pass, compared to just 2 matrix multiples in the forward pass.
+
+3 FLASHATTENTION-2:
+ALGORITHM, PARALLELISM, AND WORK PARTITIONING
+
+We describe the FLASHATTENTION-2 algorithm, which includes several tweaks to FLASHATTENTION
+to reduce the number of non-matmul FLOPs. We then describe how to parallelize the computation
+on different thread blocks to make full use the GPU resources. Finally we describe we partition the
+work between different warps within one thread block to reduce the amount of shared memory access.
+These improvements lead to 2-3x speedup as validated in Section 4.
+

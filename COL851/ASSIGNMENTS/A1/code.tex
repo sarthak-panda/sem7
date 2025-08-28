@@ -1,0 +1,136 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{fancybox}
+\usepackage{tcolorbox}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+
+% Page setup
+\geometry{margin=2cm}
+
+% Define colors for syntax highlighting
+\definecolor{terminalgreen}{RGB}{0,128,0}
+\definecolor{terminalblue}{RGB}{0,0,255}
+\definecolor{terminalred}{RGB}{255,0,0}
+\definecolor{terminalgray}{RGB}{128,128,128}
+\definecolor{backgroundgray}{RGB}{245,245,245}
+\definecolor{bordergray}{RGB}{0,0,0}
+
+% Custom style for terminal commands
+\lstdefinestyle{terminal}{
+    backgroundcolor=\color{backgroundgray},
+    basicstyle=\ttfamily\small,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    commentstyle=\color{terminalgray}\itshape,
+    escapeinside={\%*}{*},
+    extendedchars=true,
+    frame=single,
+    frameround=tttt,
+    framerule=1pt,
+    rulecolor=\color{bordergray},
+    keepspaces=true,
+    keywordstyle=\color{terminalgreen}\bfseries,
+    language=bash,
+    morekeywords={sudo, apt, git, cmake, python3, mkdir, cd, source, pip, install},
+    numberstyle=\tiny\color{terminalgray},
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    stepnumber=1,
+    stringstyle=\color{terminalred},
+    tabsize=2,
+    title=\lstname,
+    xleftmargin=10pt,
+    xrightmargin=10pt,
+    aboveskip=15pt,
+    belowskip=15pt
+}
+
+\begin{document}
+
+\title{\textbf{LLaMA.cpp Installation and Environment Setup}}
+\author{Step-by-Step Installation Guide}
+\date{\today}
+
+\maketitle
+
+\section{Complete Installation Script}
+
+The following commands will install LLaMA.cpp and set up the required Python environment on Ubuntu/Debian systems:
+
+\begin{lstlisting}[style=terminal]
+# Step 1: Update system packages and install build dependencies
+sudo apt update && sudo apt install -y build-essential git cmake python3 python3-venv python3-pip curl
+
+# Step 2: Create project directory and navigate to it
+mkdir -p ~/llm-local && cd ~/llm-local
+
+# Step 3: Clone the LLaMA.cpp repository and enter the directory
+git clone https://github.com/ggerganov/llama.cpp.git && cd llama.cpp
+
+# Step 4: Create build directory and configure the project
+mkdir -p build && cd build
+
+# Step 5: Configure CMake with Release build type (CURL disabled for cleaner build)
+cmake .. -DCMAKE_BUILD_TYPE=Release -DLLAMA_CURL=OFF
+
+# Step 6: Build the project using all available CPU cores
+cmake --build . -j$(nproc)
+
+# Step 7: Return to project root and create Python virtual environment
+cd ../.. && python3 -m venv venv && source venv/bin/activate
+
+# Step 8: Upgrade pip and install Python dependencies
+python -m pip install --upgrade pip && pip install llama-cpp-python tqdm datasets
+\end{lstlisting}
+
+\section{Installation Breakdown}
+
+\subsection{System Dependencies}
+\begin{itemize}
+    \item \texttt{build-essential}: Essential compilation tools (gcc, g++, make)
+    \item \texttt{git}: Version control system for cloning repositories
+    \item \texttt{cmake}: Build system generator for C/C++ projects
+    \item \texttt{python3}: Python interpreter for running scripts
+    \item \texttt{python3-venv}: Virtual environment support
+    \item \texttt{python3-pip}: Python package installer
+    \item \texttt{curl}: HTTP client for downloading files
+\end{itemize}
+
+\subsection{Build Configuration}
+\begin{itemize}
+    \item \texttt{Release}: Optimized build configuration for production use
+    \item \texttt{DLLAMA\_CURL=OFF}: Disables CURL dependency for simpler builds
+    \item \texttt{-j\$(nproc)}: Uses all available CPU cores for parallel compilation
+\end{itemize}
+
+\subsection{Python Environment}
+\begin{itemize}
+    \item \texttt{llama-cpp-python}: Python bindings for LLaMA.cpp
+    \item \texttt{tqdm}: Progress bars for long-running operations
+    \item \texttt{datasets}: Hugging Face datasets library for model data
+\end{itemize}
+
+\section{Post-Installation}
+
+After successful installation, the following executables will be available in the \texttt{build} directory:
+\begin{itemize}
+    \item \texttt{llama-cli}: Command-line interface for text generation
+    \item \texttt{llama-server}: HTTP server for API endpoints
+    \item \texttt{llama-bench}: Performance benchmarking tool
+    \item \texttt{llama-perplexity}: Model quality evaluation tool
+\end{itemize}
+
+To activate the Python environment in future sessions, navigate to the project directory and run:
+\begin{lstlisting}[style=terminal]
+source venv/bin/activate
+\end{lstlisting}
+
+\end{document}
