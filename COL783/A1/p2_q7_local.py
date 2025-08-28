@@ -102,11 +102,21 @@ def getMasks():
 		return mask
 	mask_rgb = cuboid_mask_rgb(img, seed_rgb, deltas=(0.15,0.15,0.15))
 	def cuboid_mask_hsi(image_hsi, seed_hsi, deltas=(0.06,0.20,0.20)):
-		pass
+		# deltas: (dh, ds, di) for normalized H in [0,1]
+		H = image_hsi[...,0]; S = image_hsi[...,1]; I_ = image_hsi[...,2]
+		dh, ds, di = deltas
+		# hue is circular; compute min circular difference
+		diff_h = np.abs(H - seed_hsi[0])
+		diff_h = np.minimum(diff_h, 1.0 - diff_h)
+		mask_h = diff_h <= dh
+		mask_s = np.abs(S - seed_hsi[1]) <= ds
+		mask_i = np.abs(I_ - seed_hsi[2]) <= di
+		mask = mask_h & mask_s & mask_i
+		return mask
 	mask_hsi = cuboid_mask_hsi(hsi, seed_hsi, deltas=(0.06,0.20,0.20))
 	# Show masks
 	plt.figure(figsize=(10,4))
 	plt.subplot(1,3,1); plt.imshow(img); plt.title("Original"); plt.axis('off')
-	plt.subplot(1,3,2); plt.imshow(mask_rgb, cmap=None); plt.title("Mask (RGB cuboid)"); plt.axis('off')
-	plt.subplot(1,3,3); plt.imshow(mask_hsi, cmap=None); plt.title("Mask (HSI cuboid)"); plt.axis('off')
+	plt.subplot(1,3,2); plt.imshow((mask_rgb*255).astype('uint8'), cmap='gray'); plt.title("Mask (RGB cuboid)"); plt.axis('off')
+	plt.subplot(1,3,3); plt.imshow((mask_hsi*255).astype('uint8'), cmap='gray'); plt.title("Mask (HSI cuboid)"); plt.axis('off')
 	plt.show()
