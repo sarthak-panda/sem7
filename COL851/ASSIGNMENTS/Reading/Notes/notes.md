@@ -204,5 +204,7 @@ inference. Instead of having to duplicate the key and value heads for the comput
 manipulate the indices into the head to perform the same computation. In the backward pass, we need
 to sum the gradients dK and dV across different heads that were implicitly duplicated.
 
+3.2 PARALLELISM
+
 
 
