@@ -149,3 +149,60 @@ on different thread blocks to make full use the GPU resources. Finally we descri
 work between different warps within one thread block to reduce the amount of shared memory access.
 These improvements lead to 2-3x speedup as validated in Section 4.
 
+3.1 ALGORITHM
+
+---repetation---
+
+We tweak the algorithm from FLASHATTENTION to reduce the number of non-matmul FLOPs. This
+is because modern GPUs have specialized compute units (e.g., Tensor Cores on Nvidia GPUs) that
+makes matmul much faster. As an example, the A100 GPU has a max theoretical throughput of 312
+TFLOPs/s of FP16/BF16 matmul, but only 19.5 TFLOPs/s of non-matmul FP32. Another way to think
+about this is that each non-matmul FLOP is 16x more expensive than a matmul FLOP. To maintain
+high throughput (e.g., more than 50% of the maximum theoretical TFLOPs/s), we want to spend as
+much time on matmul FLOPs as possible
+
+-------------
+
+3.1.1 FORWARD PASS(To revisit)
+
+We revisit the online softmax trick as shown in Section 2.3 and make two minor tweaks to reduce
+non-matmul FLOPs
+
+![](2025-08-28-08-25-41.png)
+![](2025-08-28-08-27-27.png)
+![alt text](image.png)
+![](2025-08-28-08-36-24.png)
+![](2025-08-28-08-37-24.png)
+
+Causal masking.
+One common use case of attention is in auto-regressive language modeling, where we need to apply
+a causal mask to the attention matrix S (i.e., any entry S𝑖 𝑗 with 𝑗 > 𝑖 is set to float('-inf')).
+1. As FLASHATTENTION and FLASHATTENTION-2 already operate by blocks, for any blocks where
+all the column indices are more than the row indices (approximately half of the blocks for large
+sequence length), we can skip the computation of that block. This leads to around 1.7-1.8x speedup
+compared to attention without the causal mask.
+2. We do not need to apply the causal mask for blocks whose row indices are guaranteed to be strictly
+less than the column indices. This means that for each row, we only need apply causal mask to
+1 block (assuming square block).
+
+Correctness, runtime, and memory requirement. As with FLASHATTENTION, Algorithm 1 returns
+the correct output O = softmax(QK^T)V (with no approximation), using 𝑂 (𝑁^2* 𝑑) FLOPs and requires 𝑂(𝑁) additional memory beyond inputs and output (to store the logsumexp 𝐿). The proof is almost
+the same as the proof of Dao et al. (2022, Theorem 1), so we omit it here
+
+3.1.2 BACKWARD PASS (To recheck algo.)
+
+The backward pass of FLASHATTENTION-2 is almost the same as that of FLASHATTENTION. We
+make a minor tweak to only use the row-wise logsumexp 𝐿 instead of both the row-wise max and
+row-wise sum of exponentials in the softmax. 
+
+![](2025-08-28-09-01-48.png)
+
+Multi-query attention and grouped-query attention. Multi-query attention (MQA) (Shazeer, 2019)
+and grouped-query attention (GQA) (Ainslie et al., 2023) are variants of attention where multiple
+heads of query attend to the same head of key and value, in order to reduce the size of KV cache during
+inference. Instead of having to duplicate the key and value heads for the computation, we implicitly
+manipulate the indices into the head to perform the same computation. In the backward pass, we need
+to sum the gradients dK and dV across different heads that were implicitly duplicated.
+
+
+
