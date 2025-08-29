@@ -286,4 +286,11 @@ due to recomputation)
 
 4.3 END-TO-END PERFORMANCE
 
-
+Note that we calculate the FLOPs by the formula, following Megatron-LM (Shoeybi et al., 2019) (and
+many other papers and libraries):
+6 * seqlen * number of params + 12 * number of layers * hidden dim * seqlen^2
+The first term accounts for the FLOPs due to weight-input multiplication, and the second term accounts
+for the FLOPs due to attention. However, one can argue that the second term should be halved, as
+with causal mask we only need to compute approximately half the number of elements in attention.
+We choose to follow the formula from the literature (without dividing the attention FLOPs by 2) for
+consistency
