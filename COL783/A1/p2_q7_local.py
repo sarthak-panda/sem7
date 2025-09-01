@@ -76,21 +76,49 @@ def displayHSI(img_path):
 	# plt.suptitle("subtitle")
 	# plt.show()
 
-def getAndProcessMasks(img_path):
+def getAndProcessMasks(img_path, automed=True):
 	img = load_image(img_path)
 	hsi = rgb_to_hsi(img)
 	H = hsi[...,0]# [0,1]
 	S = hsi[...,1]
 	I = hsi[...,2]
-    # Automatically pick a seed pixel:
-	# Strategy: find pixel with high saturation and mid-range intensity (not too bright/dark)
-	sat_score = S * (1.0 - np.abs(I - 0.5))  # prefer saturated, mid-intensity
 	h, w = S.shape
-	flat_idx = np.argmax(sat_score)
-	ys, xs = divmod(flat_idx, w)
-	seed_coord = (ys, xs)
-	seed_rgb = img[ys, xs, :]
-	seed_hsi = hsi[ys, xs, :]
+	if automed:
+		# Automatically pick a seed pixel:
+		# Strategy --> find pixel with high saturation and mid-range intensity (not too bright/dark)
+		sat_score = S * (1.0 - np.abs(I - 0.5))  # prefer saturated, mid-intensity
+		flat_idx = np.argmax(sat_score)
+		ys, xs = divmod(flat_idx, w)
+		# seed_coord = (ys, xs)
+		seed_coord = (int(ys), int(xs))
+	else:
+		# interactive seed selection
+		plt.figure(figsize=(6, 6))
+		plt.imshow(img)
+		plt.title("Click one point to choose seed pixel (close window when done)")
+		plt.axis('off')
+		try:
+			pts = plt.ginput(1, timeout=-1) # wait until click
+		except Exception as e:
+			pts = []
+		plt.close()
+		if len(pts) == 0:
+			sat_score = S * (1.0 - np.abs(I - 0.5))
+			flat_idx = np.argmax(sat_score)
+			ys, xs = divmod(flat_idx, w)
+			# seed_coord = (ys, xs)
+			seed_coord = (int(ys), int(xs))
+		else:
+			x_float, y_float = pts[0]
+			xs = int(round(x_float))
+			ys = int(round(y_float))
+			xs = int(np.clip(xs, 0, w - 1))# clamp into image bounds
+			ys = int(np.clip(ys, 0, h - 1))
+			seed_coord = (ys, xs)
+	# seed_rgb = img[ys, xs, :]
+	# seed_hsi = hsi[ys, xs, :]
+	seed_rgb = img[seed_coord[0], seed_coord[1], :]
+	seed_hsi = hsi[seed_coord[0], seed_coord[1], :]
 	print("Chosen seed pixel at (y,x) =", seed_coord)
 	print("Seed RGB (0-1):", seed_rgb)
 	print("Seed HSI (H in [0,1]):", seed_hsi)
@@ -150,35 +178,41 @@ def getAndProcessMasks(img_path):
 		return out
 	
 	targets = {
-		"target_red": np.array([0.0, 0.9, 0.6]),   # hue 0 (red), high sat, mid intensity
-		"target_green": np.array([1.0/3.0, 0.9, 0.6]), # hue ~120deg
+		"target_red": np.array([0.0, 0.9, 0.6]),
+		"target_green": np.array([1.0/3.0, 0.9, 0.6]),
 		"target_blue": np.array([2.0/3.0, 0.9, 0.5])
 	}
 
-	plt.figure(figsize=(12,8))
+	plt.figure(figsize=(12, 8))
+	n_targets = len(targets)
 	for i, (name, tgt) in enumerate(targets.items()):
 		for j, method in enumerate(["additive", "hybrid"]):
+			ax_index = i * 2 + j + 1    
+			plt.subplot(n_targets, 2, ax_index) 
 			modified_hsi = transform_hsi(hsi.copy(), mask_hsi, seed_hsi, tgt, method=method)
 			modified_rgb = hsi_to_rgb(modified_hsi)
 			plt.imshow(modified_rgb)
 			plt.title(f"{name} - {method}")
 			plt.axis('off')
+
 	plt.suptitle("Recoloring results (using HSI cuboid mask). Rows = targets, Columns = method", y=0.92)
-	plt.tight_layout()
+	plt.tight_layout(rect=[0, 0, 1, 0.93])
 	plt.show()
 
-	# Also show a comparison using RGB mask (hybrid method)
-	plt.figure(figsize=(12,4))
+	plt.figure(figsize=(12, 4))
+	n_targets = len(targets)
 	for i, (name, tgt) in enumerate(targets.items()):
+		plt.subplot(1, n_targets, i + 1) 
 		modified_hsi = transform_hsi(hsi.copy(), mask_rgb, seed_hsi, tgt, method="hybrid")
 		modified_rgb = hsi_to_rgb(modified_hsi)
 		plt.imshow(modified_rgb)
 		plt.title(f"{name} (RGB mask)")
 		plt.axis('off')
+
 	plt.suptitle("Recoloring results using RGB cuboid mask (hybrid transform)", y=0.95)
+	plt.tight_layout(rect=[0, 0, 1, 0.93])
 	plt.show()
 
-	# Save one example output to disk for download
 	out_img = hsi_to_rgb(transform_hsi(hsi.copy(), mask_hsi, seed_hsi, targets["target_green"], method="hybrid"))
 	out_pil = Image.fromarray((np.clip(out_img,0,1)*255).astype(np.uint8))
 	out_path = "./recolored_example_green_hsi_mask_hybrid.png"
@@ -187,4 +221,4 @@ def getAndProcessMasks(img_path):
 
 if __name__ == "__main__":
 	#displayHSI('./FruitBowl.jpg')#part1 
-	getAndProcessMasks('./FruitBowl.jpg')#part2 and part3
+	getAndProcessMasks('./FruitBowl.jpg',automed=False)#part2 and part3
