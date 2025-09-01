@@ -58,8 +58,7 @@ def hsi_to_rgb(hsi):
     rgb = np.clip(rgb, 0.0, 1.0)
     return rgb
 
-def displayHSI():
-	img_path = "/mnt/data/1bae8737-699f-42f8-a48e-00b60fc53966.png"
+def displayHSI(img_path):
 	img = load_image(img_path)
 	hsi = rgb_to_hsi(img)
 	H = hsi[...,0]# [0,1]
@@ -71,9 +70,13 @@ def displayHSI():
 	plt.subplot(1,3,2); plt.imshow((S*255).astype('uint8'), cmap='gray'); plt.title("Saturation"); plt.axis('off')
 	plt.subplot(1,3,3); plt.imshow((I*255).astype('uint8'), cmap='gray'); plt.title("Intensity"); plt.axis('off')
 	plt.show()
+	# recheck_rgb = hsi_to_rgb(hsi)
+	# plt.imshow(recheck_rgb)
+	# plt.axis('off')
+	# plt.suptitle("subtitle")
+	# plt.show()
 
-def getMasks():
-	img_path = "/mnt/data/1bae8737-699f-42f8-a48e-00b60fc53966.png"
+def getAndProcessMasks(img_path):
 	img = load_image(img_path)
 	hsi = rgb_to_hsi(img)
 	H = hsi[...,0]# [0,1]
@@ -120,3 +123,68 @@ def getMasks():
 	plt.subplot(1,3,2); plt.imshow((mask_rgb*255).astype('uint8'), cmap='gray'); plt.title("Mask (RGB cuboid)"); plt.axis('off')
 	plt.subplot(1,3,3); plt.imshow((mask_hsi*255).astype('uint8'), cmap='gray'); plt.title("Mask (HSI cuboid)"); plt.axis('off')
 	plt.show()
+
+	def transform_hsi(hsi_img, mask, seed_hsi, target_hsi, method="hybrid"):
+		# method options:
+		# "additive": additive on all components: c + (ct - cs)
+		# "hybrid": hue additive (circular), saturation multiplicative, intensity multiplicative
+		out = hsi_img.copy()
+		H = out[...,0]; S = out[...,1]; I_ = out[...,2]
+		delta_H = target_hsi[0] - seed_hsi[0]
+		delta_H = (delta_H + 0.5) % 1.0 - 0.5 # wrap to [-0.5,0.5] for minimal shift
+		if method == "additive":
+			H_new = (H + delta_H) % 1.0
+			S_new = np.clip(S + (target_hsi[1] - seed_hsi[1]), 0, 1)
+			I_new = np.clip(I_ + (target_hsi[2] - seed_hsi[2]), 0, 1)
+		elif method == "hybrid":
+			H_new = (H + delta_H) % 1.0
+			S_new = S * (target_hsi[1] / (seed_hsi[1] + 1e-8))
+			I_new = I_ * (target_hsi[2] / (seed_hsi[2] + 1e-8))
+			S_new = np.clip(S_new, 0, 1)
+			I_new = np.clip(I_new, 0, 1)
+		else:
+			raise ValueError("unknown method")
+		out[...,0][mask] = H_new[mask]
+		out[...,1][mask] = S_new[mask]
+		out[...,2][mask] = I_new[mask]
+		return out
+	
+	targets = {
+		"target_red": np.array([0.0, 0.9, 0.6]),   # hue 0 (red), high sat, mid intensity
+		"target_green": np.array([1.0/3.0, 0.9, 0.6]), # hue ~120deg
+		"target_blue": np.array([2.0/3.0, 0.9, 0.5])
+	}
+
+	plt.figure(figsize=(12,8))
+	for i, (name, tgt) in enumerate(targets.items()):
+		for j, method in enumerate(["additive", "hybrid"]):
+			modified_hsi = transform_hsi(hsi.copy(), mask_hsi, seed_hsi, tgt, method=method)
+			modified_rgb = hsi_to_rgb(modified_hsi)
+			plt.imshow(modified_rgb)
+			plt.title(f"{name} - {method}")
+			plt.axis('off')
+	plt.suptitle("Recoloring results (using HSI cuboid mask). Rows = targets, Columns = method", y=0.92)
+	plt.tight_layout()
+	plt.show()
+
+	# Also show a comparison using RGB mask (hybrid method)
+	plt.figure(figsize=(12,4))
+	for i, (name, tgt) in enumerate(targets.items()):
+		modified_hsi = transform_hsi(hsi.copy(), mask_rgb, seed_hsi, tgt, method="hybrid")
+		modified_rgb = hsi_to_rgb(modified_hsi)
+		plt.imshow(modified_rgb)
+		plt.title(f"{name} (RGB mask)")
+		plt.axis('off')
+	plt.suptitle("Recoloring results using RGB cuboid mask (hybrid transform)", y=0.95)
+	plt.show()
+
+	# Save one example output to disk for download
+	out_img = hsi_to_rgb(transform_hsi(hsi.copy(), mask_hsi, seed_hsi, targets["target_green"], method="hybrid"))
+	out_pil = Image.fromarray((np.clip(out_img,0,1)*255).astype(np.uint8))
+	out_path = "/mnt/data/recolored_example_green_hsi_mask_hybrid.png"
+	out_pil.save(out_path)
+	print("Wrote example recolored image to:", out_path)
+
+if __name__ == "__main__":
+	#displayHSI('./FruitBowl.jpg')#part1 
+	getAndProcessMasks('./FruitBowl.jpg')#part2 and part3
