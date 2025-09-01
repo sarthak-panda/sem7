@@ -294,3 +294,6 @@ for the FLOPs due to attention. However, one can argue that the second term shou
 with causal mask we only need to compute approximately half the number of elements in attention.
 We choose to follow the formula from the literature (without dividing the attention FLOPs by 2) for
 consistency
+
+additional notes:
+![](2025-09-01-17-58-22.png)
