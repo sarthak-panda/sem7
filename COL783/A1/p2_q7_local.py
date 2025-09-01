@@ -181,7 +181,7 @@ def getAndProcessMasks(img_path):
 	# Save one example output to disk for download
 	out_img = hsi_to_rgb(transform_hsi(hsi.copy(), mask_hsi, seed_hsi, targets["target_green"], method="hybrid"))
 	out_pil = Image.fromarray((np.clip(out_img,0,1)*255).astype(np.uint8))
-	out_path = "/mnt/data/recolored_example_green_hsi_mask_hybrid.png"
+	out_path = "./recolored_example_green_hsi_mask_hybrid.png"
 	out_pil.save(out_path)
 	print("Wrote example recolored image to:", out_path)
 
