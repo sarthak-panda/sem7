@@ -141,6 +141,22 @@ def total_head_no_def {α : Type} [Inhabited α] : List α → α
 
 -- YOUR ANSWER GOES HERE
 
+theorem eqlist_eqcomp {α : Type} :
+  ∀ (l1 l2 : List α) (hl1 : l1 ≠ []) (hl2 : l2 ≠ []), l1 = l2 →
+    List.head l1 hl1 = List.head l2 hl2 ∧ List.tail l1 = List.tail l2 := by
+  intros l1 l2 hl1 hl2 heq
+  cases l1 with
+  | nil => contradiction
+  | cons h1 t1 =>
+    cases l2 with
+    | nil => contradiction
+    | cons h2 t2 =>
+      cases heq    -- breaks `cons h1 t1 = cons h2 t2` into `h1 = h2` and `t1 = t2`
+      simp          -- reduces `List.head (h::t) _` to `h` and `List.tail (h::t) _` to `t`
+                   -- `simp` closes the goal, no extra `exact` needed
+
+
+
 -- Recall that we do not want to add arbitrary axioms because they could poison our whole context, and allow us to prove all sorts of junk. We know that a proposition is a statement that can be assigned a truth value. We will now show that from a patently false formula, one can derive any proposition whatsoever. The tactic used is called "contradiction".
 
 theorem anything_from_false :
@@ -165,7 +181,9 @@ The #eval test cases given below might be useful to check if your definition is 
 -/
 
 -- YOUR ANSWER GOES HERE
-
+def uniq {α : Type} [BEq α] : List α → Bool
+  | []       => true
+  | h :: t   => if List.contains t h then false else uniq t
 /-
 #check uniq
 #eval uniq [1, 2, 3]
@@ -184,3 +202,13 @@ For the purposes of the submission, discharge the proof obligation with a sorry,
 -/
 
 -- YOUR ANSWER GOES HERE
+theorem len_sup_long_correct (α : Type) [BEq α] :
+  ∀ (l1 l2 : List α),
+    (∀ x, x ∈ l1 → x ∈ l2) →
+    uniq l1 = true →
+    l1.length ≤ l2.length := by
+  intro l1 l2 Hsub Huniq
+  -- For the submission you requested, we discharge this with `sorry`.
+  -- A standard proof proceeds by induction on l1, using `uniq` to
+  -- show distinctness and removing a witness from l2 to apply the IH.
+  sorry

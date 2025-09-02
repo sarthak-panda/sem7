@@ -139,7 +139,7 @@ def total_head_no_def {α : Type} [Inhabited α] : List α → α
 -- YOUR ANSWER GOES HERE
 theorem eqlist_eqcomp {α : Type} {a b : α} {as bs : List α}
   (h : a :: as = b :: bs) : (a = b ∧ as = bs) := by
-  cases h    -- turns b into a and bs into as
+  cases h
   constructor
   · rfl
   · rfl
@@ -196,5 +196,4 @@ theorem len_sup_long_correct {α : Type} [BEq α] :
     (∀ x, x ∈ l1 → x ∈ l2) →
     l2.length ≥ l1.length := by
   intro l1 l2 huniq hsub
-  -- For submission: discharge the (expected) proof obligation with `sorry`
   sorry
