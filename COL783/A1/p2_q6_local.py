@@ -2,6 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import fftconvolve
+import imageio
 
 def disk_kernel(radius):
     r = int(radius)
@@ -24,29 +25,85 @@ def gamma_transform_linear(img, gamma):
     g = np.power(np.clip(norm, 0, None), gamma) # gamma < 1 brightens darks and compresses highlights in normalized domain
     return g # returned as normalized in [0,1]
 
-def try_load_hdr(path):
+# def try_load_hdr(path):
+#     try:
+#         import imageio.v3 as iio3
+#         img = iio3.imread(path, format_hint='.hdr')
+#         return np.asarray(img, dtype=np.float32)
+#     except Exception:
+#         pass
+#     try:
+#         import imageio
+#         img = imageio.imread(path, format='HDR-FI')
+#         return np.asarray(img, dtype=np.float32)
+#     except Exception:
+#         pass
+#     try:
+#         import cv2
+#         img = cv2.imread(path, -1)
+#         if img is not None:
+#             if img.ndim==3 and img.shape[2]==3:
+#                 img = img[..., ::-1]
+#             return img.astype(np.float32)
+#     except Exception:
+#         pass
+#     return None
+
+def try_load_hdr(fname):
     try:
-        import imageio.v3 as iio3
-        img = iio3.imread(path, format_hint='.hdr')
-        return np.asarray(img, dtype=np.float32)
+        imageio.plugins.freeimage.download()
+        img = imageio.imread(fname, format='HDR-FI')
+        img = img.astype(np.float32)
+        # # compute intensity
+        # if img.ndim == 2:
+        #     # already single channel
+        #     I = img.astype(np.float32)
+        # elif img.ndim == 3:
+        #     if img.shape[2] >= 3:
+        #         R = img[..., 0].astype(np.float32)
+        #         G = img[..., 1].astype(np.float32)
+        #         B = img[..., 2].astype(np.float32)
+        #         I = (R + G + B) / 3.0
+        #     else:
+        #         # fallback: mean across channels
+        #         I = np.mean(img, axis=-1).astype(np.float32)
+        # else:
+        #     raise ValueError(f"Unexpected image shape: {img.shape}")
+
+        # # print min and max intensities
+        # imin = float(np.min(I))
+        # imax = float(np.max(I))
+        # print(f"Intensity min: {imin:.6e}")
+        # print(f"Intensity max: {imax:.6e}")
+        # out_txt="out_txt.txt"
+        # np.savetxt(out_txt, I, fmt='%.6e')
+        # print(f"Wrote intensity array to: {out_txt} (shape: {I.shape})")
+        return img
     except Exception:
-        pass
-    try:
-        import imageio
-        img = imageio.imread(path, format='HDR-FI')
-        return np.asarray(img, dtype=np.float32)
-    except Exception:
-        pass
-    try:
-        import cv2
-        img = cv2.imread(path, -1)
-        if img is not None:
-            if img.ndim==3 and img.shape[2]==3:
+        try:
+            import cv2
+            img = cv2.imread(fname, flags=cv2.IMREAD_ANYDEPTH | cv2.IMREAD_UNCHANGED)
+            if img is None:
+                raise RuntimeError("cv2.imread returned None")
+            # OpenCV loads BGR; convert to RGB if 3 channels
+            if img.ndim == 3 and img.shape[2] == 3:
                 img = img[..., ::-1]
             return img.astype(np.float32)
-    except Exception:
-        pass
-    return None
+        except Exception as e:
+            if fname.lower().endswith('.exr'):
+                try:
+                    import OpenEXR
+                    import Imath
+                    exr_file = OpenEXR.InputFile(fname)
+                    dw = exr_file.header()['dataWindow']
+                    size = (dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1)
+                    pt = Imath.PixelType(Imath.PixelType.FLOAT)
+                    rgb = [np.frombuffer(exr_file.channel(c, pt), dtype=np.float32).reshape(size[1], size[0]) for c in ('R', 'G', 'B')]
+                    img = np.stack(rgb, axis=-1)
+                    return img.astype(np.float32)
+                except Exception as exr_e:
+                    raise RuntimeError(f"Could not read EXR image with OpenEXR: {exr_e}")
+            raise RuntimeError(f"Could not read HDR image with imageio or cv2: {e}")
 
 def rescale_to_uint8(arr):
     mn = float(arr.min())
@@ -60,7 +117,7 @@ def convolve_same(image, kernel):
     return fftconvolve(image, kernel, mode='same')
 
 if __name__ == "__main__":
-	hdr_path = "rosette.hdr"
+	hdr_path = "nave.hdr"
 	out_dir = "./Q6_OUTPUTS"
 	gamma = 0.3
 	radius = 8 

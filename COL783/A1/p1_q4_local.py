@@ -231,17 +231,16 @@
 #     plt.show()
 
 import numpy as np
-import sys
-import os
 import matplotlib.pyplot as plt
 import argparse
+import imageio
 
 def read_hdr_image(fname):
     try:
-        import imageio
-        img = imageio.v2.imread(fname)
-        print(img)
-        return img.astype(np.float32)
+        imageio.plugins.freeimage.download()
+        img = imageio.imread(fname, format='HDR-FI')
+        img = img.astype(np.float32)
+        return img
     except Exception:
         try:
             import cv2
@@ -263,7 +262,6 @@ def read_hdr_image(fname):
                     pt = Imath.PixelType(Imath.PixelType.FLOAT)
                     rgb = [np.frombuffer(exr_file.channel(c, pt), dtype=np.float32).reshape(size[1], size[0]) for c in ('R', 'G', 'B')]
                     img = np.stack(rgb, axis=-1)
-                    print(img)
                     return img.astype(np.float32)
                 except Exception as exr_e:
                     raise RuntimeError(f"Could not read EXR image with OpenEXR: {exr_e}")
@@ -305,7 +303,6 @@ def hdr_equalize_luminance(rgb_hdr, a=0.0, b=256.0, eps=1e-8):
 
 def compute_luminance(img):
     if img.ndim == 3 and img.shape[2] >= 3:
-        # Rec. 709 / sRGB-like weights (standard)
         r, g, b = img[..., 0], img[..., 1], img[..., 2]
         return 0.2126 * r + 0.7152 * g + 0.0722 * b
     else:
@@ -334,52 +331,87 @@ if __name__ == "__main__":
     valid_hdr = lum_hdr[np.isfinite(lum_hdr)]
     valid_out = lum_out[np.isfinite(lum_out)]
     
-    # Debug: Print range of luminance values
     print(f"Original luminance range: min={valid_hdr.min():.4f}, max={valid_hdr.max():.4f}")
-    
-    # Compute histogram bins separately for original and equalized luminance
-    bins_hdr = np.histogram_bin_edges(valid_hdr, bins='auto', range=(0, valid_hdr.max() * 1.1))
-    bins_out = np.histogram_bin_edges(valid_out, bins='auto')
-    counts_hdr, edges_hdr = np.histogram(valid_hdr, bins=bins_hdr)
-    counts_out, edges_out = np.histogram(valid_out, bins=bins_out)
-    bin_centers_hdr = 0.5 * (edges_hdr[:-1] + edges_hdr[1:])
-    bin_centers_out = 0.5 * (edges_out[:-1] + edges_out[1:])
-    
+
+    num_bins = 512
+    eps = 1e-12
+
+    if valid_hdr.size == 0:
+        raise ValueError("valid_hdr is empty")
+    if valid_out.size == 0:
+        raise ValueError("valid_out is empty")
+
+    valid_hdr = valid_hdr[np.isfinite(valid_hdr)]
+    valid_out = valid_out[np.isfinite(valid_out)]
+
+    log_hdr = np.log10(valid_hdr + eps)
+    log_out = np.log10(valid_out + eps)
+
+    counts_log_hdr, edges_log_hdr = np.histogram(log_hdr, bins=num_bins)
+    counts_log_out, edges_log_out = np.histogram(log_out, bins=num_bins)
+
+    bin_centers_log_hdr = 0.5 * (edges_log_hdr[:-1] + edges_log_hdr[1:])
+    bin_centers_log_out = 0.5 * (edges_log_out[:-1] + edges_log_out[1:])
+
+    p_lo, p_hi = 0.0, 99.995
+    linear_max_hdr = np.percentile(valid_hdr, p_hi)
+    linear_min_hdr = max(0.0, np.percentile(valid_hdr, p_lo))
+    linear_bins_hdr = np.linspace(linear_min_hdr, linear_max_hdr, num_bins + 1)
+    counts_lin_hdr, edges_lin_hdr = np.histogram(valid_hdr, bins=linear_bins_hdr)
+
+    linear_max_out = np.percentile(valid_out, 100)
+    linear_min_out = max(0.0, np.percentile(valid_out, 0.0))
+    linear_bins_out = np.linspace(linear_min_out, linear_max_out, num_bins + 1)
+    counts_lin_out, edges_lin_out = np.histogram(valid_out, bins=linear_bins_out)
+
+    bin_centers_lin_hdr = 0.5 * (edges_lin_hdr[:-1] + edges_lin_hdr[1:])
+    bin_centers_lin_out = 0.5 * (edges_lin_out[:-1] + edges_lin_out[1:])
+
     preview = orig_vis.copy()
     preview = preview / (preview.max() + 1e-12)
     preview = np.clip(preview, 0, 1)
 
-    # Figure 1: Original HDR preview
     fig1 = plt.figure(figsize=(7, 5))
     plt.imshow(preview)
     plt.title("HDR (simple normalized preview)")
     plt.axis('off')
-    
-    # Figure 2: Histogram-equalized image
+
     fig2 = plt.figure(figsize=(7, 5))
     plt.imshow(out)
     plt.title("Histogram-equalized")
     plt.axis('off')
-    
-    # Figure 3: Separate luminance histograms with logarithmic scale
-    fig3 = plt.figure(figsize=(14, 5))
-    plt.subplot(1, 2, 1)
-    plt.plot(bin_centers_hdr, counts_hdr, label="Original HDR (luminance)")
-    plt.xlabel("Luminance value")
-    plt.ylabel("Pixel count (log scale)")
-    plt.title("Original HDR Luminance Histogram")
-    plt.yscale('log')  # Use logarithmic scale for y-axis
-    plt.legend()
-    plt.grid(True, which="both")
-    
-    plt.subplot(1, 2, 2)
-    plt.plot(bin_centers_out, counts_out, label="Equalized output (luminance)")
-    plt.xlabel("Luminance value")
-    plt.ylabel("Pixel count (log scale)")
-    plt.title("Equalized Luminance Histogram")
-    plt.yscale('log')  # Use logarithmic scale for y-axis
-    plt.legend()
-    plt.grid(True, which="both")
-    
+
+    fig3, axs = plt.subplots(2, 2, figsize=(14, 10))
+
+    axs[0, 0].plot(bin_centers_log_hdr, counts_log_hdr, label="Original HDR (log10 L)")
+    axs[0, 0].set_xlabel("log10(Luminance)")
+    axs[0, 0].set_ylabel("Pixel count (log y)")
+    axs[0, 0].set_title("Original HDR Luminance Histogram (log x)")
+    axs[0, 0].legend()
+    axs[0, 0].set_yscale('log')
+    axs[0, 0].grid(True, which="both")
+
+    axs[0, 1].plot(bin_centers_log_out, counts_log_out, label="Equalized output (log10 L)")
+    axs[0, 1].set_xlabel("log10(Luminance)")
+    axs[0, 1].set_ylabel("Pixel count (log y)")
+    axs[0, 1].set_title("Equalized Luminance Histogram (log x)")
+    axs[0, 1].legend()
+    axs[0, 1].set_yscale('log')
+    axs[0, 1].grid(True, which="both")
+
+    axs[1, 0].plot(bin_centers_lin_hdr, counts_lin_hdr, label=f"Original HDR (linear, clipped {p_hi}th pct)")
+    axs[1, 0].set_xlabel("Luminance value")
+    axs[1, 0].set_ylabel("Pixel count")
+    axs[1, 0].set_title("Original HDR Luminance Histogram (linear x, clipped)")
+    axs[1, 0].legend()
+    axs[1, 0].grid(True)
+
+    axs[1, 1].plot(bin_centers_lin_out, counts_lin_out, label=f"Equalized output")
+    axs[1, 1].set_xlabel("Luminance value")
+    axs[1, 1].set_ylabel("Pixel count")
+    axs[1, 1].set_title("Equalized Luminance Histogram (linear x, clipped)")
+    axs[1, 1].legend()
+    axs[1, 1].grid(True)
+
     plt.tight_layout()
     plt.show()
