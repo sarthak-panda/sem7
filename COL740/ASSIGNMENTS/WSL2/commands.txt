@@ -1,0 +1,87 @@
+A — Static class & package diagrams (Python) — pyreverse + dot
+B — Dynamic call graph / sequence-like diagrams — pycallgraph2
+C — C / C++ repos: Doxygen + Graphviz
+
+A)
+#static#
+git clone https://github.com/pallets/click.git
+cd click
+python3 -m venv .venv
+source .venv/bin/activate
+pip install pylint graphviz
+# target the main package folder (here 'click')
+pyreverse -o dot -p click_project click
+# This produces classes_click_project.dot and packages_click_project.dot
+dot -Tsvg classes_click_project.dot -o classes_click_project.svg
+dot -Tsvg packages_click_project.dot -o packages_click_project.svg
+# Open the SVG in your browser or an image viewer:
+xdg-open classes_click_project.svg
+
+B)
+pip install pycallgraph2
+cd .. [outside click]
+--------------
+# trace_click.py
+import click       # or import the package/module you care about
+# call a couple functions to exercise the code:
+print("imported click version:", click.__version__)
+# (or execute a small sample command)
+--------------
+pycallgraph graphviz -- python trace_click.py
+# produces pycallgraph.png in current dir
+xdg-open pycallgraph.png
+
+C)
+
+git clone https://github.com/nlohmann/json.git
+cd json
+doxygen -g                 # generates Doxyfile
+# set INPUT
+sed -i "s|^INPUT .*|INPUT = include src|" Doxyfile
+
+# ensure recursion
+sed -i 's/^RECURSIVE.*/RECURSIVE = YES/' Doxyfile
+
+# ensure Doxygen parses common C++ extensions (add .hpp .hh)
+sed -i "s|^FILE_PATTERNS .*|FILE_PATTERNS = *.c *.cc *.cxx *.cpp *.h *.hh *.hpp *.ipp|" Doxyfile
+
+# ensure extraction and graphs enabled
+sed -i 's/^EXTRACT_ALL.*/EXTRACT_ALL = YES/' Doxyfile
+sed -i 's/^HAVE_DOT.*/HAVE_DOT = YES/' Doxyfile
+sed -i 's/^DOT_IMAGE_FORMAT.*/DOT_IMAGE_FORMAT = svg/' Doxyfile
+sed -i 's/^CLASS_GRAPH.*/CLASS_GRAPH = YES/' Doxyfile 2>/dev/null || true
+sed -i 's/^COLLABORATION_GRAPH.*/COLLABORATION_GRAPH = YES/' Doxyfile 2>/dev/null || true
+sed -i 's/^UML_LOOK.*/UML_LOOK = YES/' Doxyfile 2>/dev/null || true
+
+doxygen Doxyfile 2>&1 | tee doxygen_run2.log
+grep -i "no files to be processed" doxygen_run2.log || true
+grep -i dot doxygen_run2.log || true
+
+xdg-open html/index.html#open any html file manuallly
+
+
+D)
+
+// main.cpp
+#include "./json.hpp"
+#include <iostream>
+using json = nlohmann::json;
+
+int main() {
+    json j = { {"pi", 3.141}, {"happy", true}, {"name", "Niels"} };
+    std::cout << j.dump(2) << std::endl;
+    for(int i = 0; i < 1000; ++i) {
+        json x;
+        x["i"] = i;
+    }
+    return 0;
+}
+
+ g++ -g -O0 main.cpp -I include -o example_main
+
+valgrind --tool=callgrind --callgrind-out-file=callgrind.out ./example_main
+# produces callgrind.out.<pid> (or callgrind.out in newer valgrind)
+
+kcachegrind callgrind.out*
+
+
