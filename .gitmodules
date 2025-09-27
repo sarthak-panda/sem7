@@ -4,3 +4,6 @@
 [submodule "COL851/PROJECT/external/COL851_Project"]
 	path = COL851/PROJECT/external/COL851_Project
 	url = https://github.com/sarthak-panda/COL851_Project.git
+[submodule "COL740/ASSIGNMENTS/GIT/external/Software-engineering"]
+	path = COL740/ASSIGNMENTS/GIT/external/Software-engineering
+	url = https://github.com/pv0504/Software-engineering.git
