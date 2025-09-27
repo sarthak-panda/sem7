@@ -1,0 +1,11 @@
+city,model,experiment,context_days,horizon_hours,avg_rmse
+df_patna_covariates,amazon/chronos-bolt-base,context_sweep,2,24,67.2144677499816
+df_patna_covariates,amazon/chronos-bolt-base,context_sweep,4,24,66.12898999453668
+df_patna_covariates,amazon/chronos-bolt-base,context_sweep,8,24,65.54669627253398
+df_patna_covariates,amazon/chronos-bolt-base,context_sweep,10,24,66.05271038022602
+df_patna_covariates,amazon/chronos-bolt-base,context_sweep,14,24,67.51904763312868
+df_patna_covariates,amazon/chronos-bolt-base,horizon_sweep,10,4,39.377002879807335
+df_patna_covariates,amazon/chronos-bolt-base,horizon_sweep,10,8,52.28747241787134
+df_patna_covariates,amazon/chronos-bolt-base,horizon_sweep,10,12,56.13457050038894
+df_patna_covariates,amazon/chronos-bolt-base,horizon_sweep,10,24,66.05271038022602
+df_patna_covariates,amazon/chronos-bolt-base,horizon_sweep,10,48,76.0783406367406

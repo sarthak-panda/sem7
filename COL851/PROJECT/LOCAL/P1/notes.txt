@@ -1,0 +1,1 @@
+pipeline = BaseChronosPipeline.from_pretrained(model_name, device_map='cpu')
