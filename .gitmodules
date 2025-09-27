@@ -1,3 +1,6 @@
 [submodule "COL783/A1/sharedGit/P1"]
 	path = COL783/A1/sharedGit/P1
 	url = https://github.com/sarthak-panda/COL783_A1_P1.git
+[submodule "COL851/PROJECT/external/COL851_Project"]
+	path = COL851/PROJECT/external/COL851_Project
+	url = https://github.com/sarthak-panda/COL851_Project.git
