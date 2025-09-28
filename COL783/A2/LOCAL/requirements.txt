@@ -1,0 +1,4 @@
+# core dependencies for your snippet
+numpy>=1.24
+matplotlib>=3.7
+opencv-python>=4.7
