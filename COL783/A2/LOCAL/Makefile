@@ -102,9 +102,9 @@ rebuild: clean build
 q1: $(VENV_DIR)
 	@echo Running Q1...
 ifeq ($(OS),Windows_NT)
-	$(VENV_ACTIVATE) && cd Part1_Q1 && ..\$(VENV_PYTHON) q1.py && cd ..
+	$(VENV_ACTIVATE) && cd Part1_Q1 && ..\$(VENV_PYTHON) q1_local.py && cd ..
 else
-	. $(VENV_ACTIVATE) && cd Part1_Q1 && ../$(VENV_PYTHON) q1.py && cd ..
+	. $(VENV_ACTIVATE) && cd Part1_Q1 && ../$(VENV_PYTHON) q1_local.py && cd ..
 endif
 
 # Run Q2 script
@@ -112,7 +112,7 @@ endif
 q2: $(VENV_DIR)
 	@echo Running Q2...
 ifeq ($(OS),Windows_NT)
-	$(VENV_ACTIVATE) && cd Part1_Q2 && ..\$(VENV_PYTHON) q2.py && cd ..
+	$(VENV_ACTIVATE) && cd Part1_Q2 && ..\$(VENV_PYTHON) q2_local.py && cd ..
 else
-	. $(VENV_ACTIVATE) && cd Part1_Q2 && ../$(VENV_PYTHON) q2.py && cd ..
+	. $(VENV_ACTIVATE) && cd Part1_Q2 && ../$(VENV_PYTHON) q2_local.py && cd ..
 endif
