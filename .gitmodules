@@ -7,3 +7,6 @@
 [submodule "COL740/ASSIGNMENTS/GIT/external/Software-engineering"]
 	path = COL740/ASSIGNMENTS/GIT/external/Software-engineering
 	url = https://github.com/pv0504/Software-engineering.git
+[submodule "COL783/A2/external/COL783_A2"]
+	path = COL783/A2/external/COL783_A2
+	url = https://github.com/ujjawal0702/COL783_A2.git
