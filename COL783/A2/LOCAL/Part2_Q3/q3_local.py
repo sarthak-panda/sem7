@@ -17,27 +17,27 @@ def load_image_gray(path: str) -> np.ndarray:
         gray = util.img_as_float(img)
     return gray
 
-def auto_crop_halftone(gray: np.ndarray, sigma: float = 3.0, percentile: float = 95.0, min_area: int = 200*200, pad: int = 20) -> tuple[np.ndarray, bool]:
-    # It finds a region with halftone dots by looking for high local variance, Returns (cropped_image, used_crop_flag).
-    local_mean = gaussian_filter(gray, sigma=sigma)
-    local_sq_mean = gaussian_filter(gray**2, sigma=sigma)
-    local_var = np.clip(local_sq_mean - local_mean**2, 0, None)
-    thr = np.percentile(local_var, percentile)
-    mask = local_var > thr
-    lab = label(mask)
-    props = regionprops(lab)
-    if not props:
-        return gray, False
-    props_sorted = sorted(props, key=lambda p: p.area, reverse=True)
-    bbox = props_sorted[0].bbox  # (min_row, min_col, max_row, max_col)
-    r0, c0, r1, c1 = bbox
-    r0 = max(0, r0 - pad); c0 = max(0, c0 - pad)
-    r1 = min(gray.shape[0], r1 + pad); c1 = min(gray.shape[1], c1 + pad)
-    crop = gray[r0:r1, c0:c1]
-    if crop.size > min_area:
-        return crop, True
-    else:
-        return gray, False
+# def auto_crop_halftone(gray: np.ndarray, sigma: float = 3.0, percentile: float = 95.0, min_area: int = 200*200, pad: int = 20) -> tuple[np.ndarray, bool]:
+#     # It finds a region with halftone dots by looking for high local variance, Returns (cropped_image, used_crop_flag).
+#     local_mean = gaussian_filter(gray, sigma=sigma)
+#     local_sq_mean = gaussian_filter(gray**2, sigma=sigma)
+#     local_var = np.clip(local_sq_mean - local_mean**2, 0, None)
+#     thr = np.percentile(local_var, percentile)
+#     mask = local_var > thr
+#     lab = label(mask)
+#     props = regionprops(lab)
+#     if not props:
+#         return gray, False
+#     props_sorted = sorted(props, key=lambda p: p.area, reverse=True)
+#     bbox = props_sorted[0].bbox  # (min_row, min_col, max_row, max_col)
+#     r0, c0, r1, c1 = bbox
+#     r0 = max(0, r0 - pad); c0 = max(0, c0 - pad)
+#     r1 = min(gray.shape[0], r1 + pad); c1 = min(gray.shape[1], c1 + pad)
+#     crop = gray[r0:r1, c0:c1]
+#     if crop.size > min_area:
+#         return crop, True
+#     else:
+#         return gray, False
 
 def rescale_max_size(img: np.ndarray, max_dim: int = 1024) -> tuple[np.ndarray, float]:
     h, w = img.shape
@@ -174,7 +174,7 @@ def show_im(title, img, cmap='gray'):
 def main():
     parser = argparse.ArgumentParser(description="Halftone notch filtering (modular)")
     parser.add_argument('--input', required=True, help='Input image path')
-    parser.add_argument('--auto-crop', action='store_true', help='Automatically crop to halftone region')
+    # parser.add_argument('--auto-crop', action='store_true', help='Automatically crop to halftone region')
     parser.add_argument('--max-dim', type=int, default=1024, help='Max dimension to rescale for speed')
     parser.add_argument('--method', choices=['gaussian', 'butterworth', 'ideal'], default='gaussian')
     parser.add_argument('--sigma', type=float, default=6.0, help='Gaussian sigma or ideal radius or butterworth D0')
@@ -185,11 +185,15 @@ def main():
     args = parser.parse_args()
 
     gray = load_image_gray(args.input)
-    if args.auto_crop:
-        gray_crop, used = auto_crop_halftone(gray)
-    else:
-        gray_crop, used = gray, False
-    gray_rs, _ = rescale_max_size(gray_crop, max_dim=args.max_dim)
+
+    # if args.auto_crop:
+    #     gray_crop, used = auto_crop_halftone(gray)
+    # else:
+    # gray_crop = gray
+
+    # gray_rs, _ = rescale_max_size(gray_crop, max_dim=args.max_dim)
+
+    gray_rs, _ = rescale_max_size(gray, max_dim=args.max_dim)
 
     F, mag, mag_log = compute_centered_spectrum(gray_rs)
     centers = detect_spectral_peaks(mag, exclude_radius=10, top_percentile=args.report_top)
@@ -228,7 +232,7 @@ def main():
     print(f"Saved results to {out.resolve()}")
 
     if args.show:
-        show_im('Input (possibly cropped & rescaled)', img_clip)
+        show_im('Input', img_clip)
         show_im('Centered log-spectrum (no padding)', mag_log_norm)
         show_im(f'Filtered spectrum ({args.method})', mag_filtered_norm)
         show_im(f'Filtered image ({args.method})', img_f_clip)
