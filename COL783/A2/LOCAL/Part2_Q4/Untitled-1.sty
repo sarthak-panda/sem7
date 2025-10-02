@@ -1,0 +1,22 @@
+This problem is simply about evaluating some basic techniquesʼ eectiveness at denoising on some
+synthetic test cases. We will use two test images: c being a constant image where each pixel has
+intensity I_max/2, and f being a natural image of your choice.
+a. Create three noisy images from c , namely: c_1 with additive uniform noise, c_2 with additive
+Gaussian noise, and c_3 with salt-and-pepper noise (equal probability of salt and pepper). In each
+case, choose the parameters of the noise so that PSNR = 20 dB. Do the same starting from f.
+b. Denoise each c_i with an arithmetic mean filter of width w = 2*a+1 (basically odd values of w), and record the PSNR of the
+denoised image as a function of w . Do the same with a median filter, and make a single plot
+showing the PSNR of both methods with w on the x-axis. (You have get 3 plots total; one for
+each noise model.)
+c. Repeat task (b) with the noisy natural images f_i . You should observe increase and then decrease
+with w; explain in your report why this is the case. Also show the denoised images with the best
+PSNR for both mean and median filtering.
+d. Implement a non-local means filter for higher-quality denoising, and demonstrate it
+on f_i. You may wish to refer to the "original paper" for details. To improve performance, only
+consider contributions from pixels within a 3m*3m “search window”, where m*m is the
+neighbourhood size. Experiment with dierent values of both parameters (neighbourhood size
+m , standard deviation sigma) for best results
+
+original paper link: https://ieeexplore.ieee.org/document/1467423
+
+Give a python implementation

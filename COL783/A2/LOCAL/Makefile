@@ -116,3 +116,33 @@ ifeq ($(OS),Windows_NT)
 else
 	. $(VENV_ACTIVATE) && cd Part1_Q2 && ../$(VENV_PYTHON) q2_local.py && cd ..
 endif
+
+# Run Q3_Gaussian script
+.PHONY: q3_g
+q3_g: $(VENV_DIR)
+	@echo Running Q3_Gaussian...
+ifeq ($(OS),Windows_NT)
+	$(VENV_ACTIVATE) && cd Part2_Q3 && ..\$(VENV_PYTHON) q3_local.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method gaussian --sigma 6 && cd ..
+else
+	. $(VENV_ACTIVATE) && cd Part2_Q3 && ../$(VENV_PYTHON) q3_local.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method gaussian --sigma 6 && cd ..
+endif
+
+# Run Q3_Butterworth script
+.PHONY: q3_b
+q3_b: $(VENV_DIR)
+	@echo Running Q3_Butterworth...
+ifeq ($(OS),Windows_NT)
+	$(VENV_ACTIVATE) && cd Part2_Q3 && ..\$(VENV_PYTHON) q3_local.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method butterworth --sigma 6 --butterworth-n 2 && cd ..
+else
+	. $(VENV_ACTIVATE) && cd Part2_Q3 && ../$(VENV_PYTHON) q3_local.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method butterworth --sigma 6 --butterworth-n 2 && cd ..
+endif
+
+# Run Q3_ideal script
+.PHONY: q3_i
+q3_i: $(VENV_DIR)
+	@echo Running Q3_Ideal...
+ifeq ($(OS),Windows_NT)
+	$(VENV_ACTIVATE) && cd Part2_Q3 && ..\$(VENV_PYTHON) q3_local.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method ideal --sigma 6 && cd ..
+else
+	. $(VENV_ACTIVATE) && cd Part2_Q3 && ../$(VENV_PYTHON) q3_local.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method ideal --sigma 6 && cd ..
+endif
