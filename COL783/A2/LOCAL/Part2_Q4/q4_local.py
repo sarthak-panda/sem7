@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import os
 from numpy.lib.stride_tricks import sliding_window_view
 from typing import Optional
+from scipy.signal import correlate2d
 
 USE_SCIPY = True
 try:
@@ -169,77 +170,7 @@ def median_filter_wrapper(img: np.ndarray, ksize: int) -> np.ndarray:
     med = np.median(reshaped, axis=2)
     return med.astype(img.dtype)
 
-def non_local_means_basic(gray: np.ndarray, patch_radius: int = 1, search_radius: int = 3, h: float = 10.0, sigma: float = None, downsample: int = 1) -> np.ndarray:
-    """
-    NLM for 2D grayscale images. If downsample>1, NLM runs on a smaller image and result is upsampled
-    back to the original size before returning (so returned image always matches input `gray` size).
-    """
-    orig_H, orig_W = gray.shape
-    if downsample <= 1:
-        img = gray.copy()
-        out_scale = 1
-    else:
-        img = gray[::downsample, ::downsample].copy()
-        out_scale = downsample
-
-    H, W = img.shape
-    pad = patch_radius + search_radius
-    padded = np.pad(img, pad, mode='reflect')
-    out_small = np.zeros_like(img)
-    h2 = max(h * h, 1e-9)
-    noise_var_2 = 2 * (sigma * sigma) if sigma is not None else 0.0
-
-    for y in range(H):
-        for x in range(W):
-            y0 = y + pad
-            x0 = x + pad
-            ref = padded[y0 - patch_radius:y0 + patch_radius + 1, x0 - patch_radius:x0 + patch_radius + 1]
-            weights = []
-            vals = []
-            for dy in range(-search_radius, search_radius + 1):
-                for dx in range(-search_radius, search_radius + 1):
-                    yy = y0 + dy
-                    xx = x0 + dx
-                    cand = padded[yy - patch_radius:yy + patch_radius + 1, xx - patch_radius:xx + patch_radius + 1]
-                    d2 = np.sum((ref - cand) ** 2)
-                    # w = math.exp(-d2 / h2)
-                    d2_corrected = max(d2 - noise_var_2, 0.0)
-                    w = math.exp(-d2_corrected / h2)
-                    weights.append(w)
-                    vals.append(padded[yy, xx])
-            weights = np.array(weights, dtype=np.float64)
-            weights_sum = weights.sum()
-            if weights_sum == 0:
-                weights_sum = 1.0
-            weights /= weights_sum
-            vals = np.array(vals, dtype=np.float64)
-            out_small[y, x] = float(weights @ vals)
-        if (y % 30) == 0:
-            print(f"NLM: processed {y}/{H} rows")
-    if out_scale == 1:
-        return out_small.astype(np.float32)
-    # Upsample out_small back to original image size
-    # use scipy.ndimage.zoom if available for nicer upsampling
-    try:
-        if USE_SCIPY:
-            from scipy.ndimage import zoom
-            zoom_f = (downsample, downsample)
-            out_up = zoom(out_small, zoom_f, order=1)  # bilinear
-        else:
-            # fallback: repeat pixels (nearest) and then crop/pad
-            out_up = np.kron(out_small, np.ones((downsample, downsample)))
-    except Exception:
-        out_up = np.kron(out_small, np.ones((downsample, downsample)))
-
-    out_up = out_up[:orig_H, :orig_W]
-    if out_up.shape[0] < orig_H or out_up.shape[1] < orig_W:
-        # pad with edge values if needed
-        pad_h = orig_H - out_up.shape[0]
-        pad_w = orig_W - out_up.shape[1]
-        out_up = np.pad(out_up, ((0, pad_h), (0, pad_w)), mode='edge')
-    return out_up.astype(np.float32)
-
-def non_local_means_optimized(gray: np.ndarray,
+def non_local_means(gray: np.ndarray,
                             patch_radius: int = 1,
                             search_radius: int = 5, 
                             h: float = None,
@@ -249,7 +180,7 @@ def non_local_means_optimized(gray: np.ndarray,
     # Auto-estimate sigma if not provided, Estimate noise using Laplacian variance method
     if sigma is None:
         laplacian = np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]], dtype=np.float32)
-        convolved = np.correlate2d(gray, laplacian, mode='same', boundary='symm')
+        convolved = correlate2d(gray, laplacian, mode='same', boundary='symm')
         sigma = np.sqrt(0.5 * np.pi) * np.mean(np.abs(convolved)) / 6.0
         print(f"Auto-estimated sigma: {sigma:.3f}")
     # Auto-compute h if not provided based on scikit-image recommendations
@@ -258,10 +189,10 @@ def non_local_means_optimized(gray: np.ndarray,
             h = 0.8 * sigma  # Conservative for fast mode
         else:
             h = 1.0 * sigma
-        print(f"Auto-computed h: {h:.3f} (was 0.4*sigma={0.4*sigma:.3f} in original)")
+        print(f"Auto-computed h: {h:.3f}")
     
     # Handle salt & pepper noise with hybrid approach
-    if noise_type == 'salt_pepper':
+    if noise_type == 'saltpepper':
         print("Using hybrid approach for salt & pepper noise")
         return _nlm_salt_pepper_hybrid(gray, patch_radius, search_radius, h, sigma)
     
@@ -325,25 +256,18 @@ def non_local_means_optimized(gray: np.ndarray,
         if (y % 30) == 0:
             progress = (y + 1) / H * 100
             print(f"Progress: {progress:.1f}% ({y+1}/{H} rows)")
-    
     return result
 
-
 def _adaptive_median_filter(image: np.ndarray, max_window_size: int = 7) -> np.ndarray:
-    """
-    Adaptive median filter for salt & pepper noise preprocessing.
-    Dynamically adjusts window size to preserve edges while removing impulses.
-    """
+    # Adaptive median filter for salt & pepper noise preprocessing.
     H, W = image.shape
     result = image.copy()
     
     for y in range(H):
         for x in range(W):
-            # Try increasing window sizes
             for window_size in range(3, max_window_size + 1, 2):
                 half_w = window_size // 2
-                
-                # Get window bounds (handle borders)
+
                 y_min = max(0, y - half_w)
                 y_max = min(H, y + half_w + 1)
                 x_min = max(0, x - half_w)
@@ -359,48 +283,37 @@ def _adaptive_median_filter(image: np.ndarray, max_window_size: int = 7) -> np.n
                 # Stage A: Check if median is impulse
                 A1 = z_med - z_min
                 A2 = z_med - z_max
-                
                 if A1 > 0 and A2 < 0:
                     # Median is not impulse
                     # Stage B: Check if current pixel is impulse
                     B1 = z_xy - z_min
                     B2 = z_xy - z_max
-                    
                     if B1 > 0 and B2 < 0:
                         result[y, x] = z_xy  # Keep original (not impulse)
                     else:
                         result[y, x] = z_med  # Replace with median (is impulse)
                     break
                 else:
-                    # Median is impulse, try larger window
+                    # Median is impulse, try larger window, if not possiblle Fallback to median
                     if window_size == max_window_size:
-                        result[y, x] = z_med  # Fallback to median
-    
+                        result[y, x] = z_med 
     return result
 
 
-def _nlm_salt_pepper_hybrid(gray: np.ndarray, patch_radius: int, search_radius: int, 
-                           h: float, sigma: Optional[float]) -> np.ndarray:
-    """
-    Hybrid approach for salt & pepper noise:
-    1. Pre-process with adaptive median filter to remove impulses
-    2. Apply NLM on cleaned image for final smoothing
-    """
+def _nlm_salt_pepper_hybrid(gray: np.ndarray, patch_radius: int, search_radius: int, h: float, sigma: Optional[float]) -> np.ndarray:
     print("Step 1: Adaptive median filtering to remove salt & pepper...")
     pre_filtered = _adaptive_median_filter(gray)
-    
     print("Step 2: Applying NLM for final smoothing...")
     # Apply NLM on pre-filtered image (now mostly Gaussian-like noise)
-    result = non_local_means_optimized(
+    result = non_local_means(
         pre_filtered, 
         patch_radius=patch_radius, 
         search_radius=search_radius,
         h=h, 
         sigma=sigma, 
-        fast_mode=True,  # Use fast mode for efficiency
-        noise_type='gaussian'  # Treat as Gaussian after median filtering
+        fast_mode=False,
+        noise_type='gaussian'
     )
-    
     return result
 
 def experiment_mean_median(noisy: np.ndarray, clean: np.ndarray, w_list: list):
@@ -415,7 +328,6 @@ def experiment_mean_median(noisy: np.ndarray, clean: np.ndarray, w_list: list):
         mean_psnrs.append(psnr(den_mean, clean))
         median_psnrs.append(psnr(den_med, clean))
     return mean_psnrs, median_psnrs, mean_imgs, median_imgs
-
 
 def plot_psnr(w_list: list, mean_psnrs: list, median_psnrs: list, title: str, outname: str):
     plt.figure(figsize=(7,4))
@@ -510,39 +422,34 @@ def main_cli(args):
     # Part (d)
     def rgb2gray(arr):
         return (0.3333 * arr[:, :, 0] + 0.3333 * arr[:, :, 1] + 0.3333 * arr[:, :, 2])
-
     gray_clean = rgb2gray(natural_arr)
     nlm_summary = {}
     for typ in noises:
         gray_noisy = rgb2gray(f_noisy[typ])
-        trials = [
-            {'patch_radius': 2, 'search_radius': 7, 'h': 10.2, 'sigma': 25.5},#h=0.4*sigma
-        ]
+        trials = [{'patch_radius': 2, 'search_radius': 6, 'noise_type': 'gaussian'}]
+        if typ!='gaussian':
+            trials.append({'patch_radius': 2, 'search_radius': 6, 'noise_type': typ})
         nlm_summary[typ] = []
         for t in trials:
-            print(f"Running NLM for {typ} with params {t} (downsample={args.nlm_downsample})")
+            print(f"Running NLM for {typ} with params {t}")
             t0 = time.time()
-            den = non_local_means_basic(gray_noisy, patch_radius=t['patch_radius'], search_radius=t['search_radius'],
-                                        h=t['h'], sigma=t['sigma'], downsample=args.nlm_downsample)
+            den = non_local_means(gray_noisy, patch_radius=t['patch_radius'], search_radius=t['search_radius'], noise_type=t['noise_type'])
             t1 = time.time()
             psnr_val = psnr(den, gray_clean)
             print("den.shape =", den.shape, "gray_clean.shape =", gray_clean.shape)
-            outname = f"PartD/nlm_{typ}_pr{t['patch_radius']}_sr{t['search_radius']}_h{int(t['h'])}_ds{args.nlm_downsample}.png"
+            outname = f"PartD/Noise_Type_{typ}/nlm_pr{t['patch_radius']}_sr{t['search_radius']}_de_noise_type{t['noise_type']}.png"
             save_img_from_array(den, outname)
             nlm_summary[typ].append({'params': t, 'psnr': psnr_val, 'time_s': t1 - t0, 'file': outname})
             print(f"Saved {outname} PSNR={psnr_val:.3f} time={t1-t0:.1f}s")
-
     print("\nAll outputs saved to:", OUT_DIR)
     print("NLM summary:")
     for k, v in nlm_summary.items():
         print(k, v)
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Denoising experiment (mean, median, NLM) tuned to PSNR=20dB by default.')
-    parser.add_argument('--input', type=str, default=r'..\Testcases\Q4.png', help='Path to natural image (Q4.jpg)')
+    parser.add_argument('--input', type=str, default=r'../Testcases/Q4.png', help='Path to natural image (Q4.jpg)')
     parser.add_argument('--target-psnr', type=float, default=20.0, help='Target PSNR (dB) for noisy images')
-    parser.add_argument('--nlm-downsample', type=int, default=1, help='Downsample factor for NLM to speed up (1 = no downsample)')
     args = parser.parse_args()
     main_cli(args)
 
