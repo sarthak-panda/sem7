@@ -7,6 +7,9 @@ from skimage import io, color, util
 from skimage.measure import label, regionprops
 import matplotlib.pyplot as plt
 import os
+from matplotlib.patches import Circle
+
+AUTOMATED_PEAK_DETECTOR=False
 
 def load_image_gray(path: str) -> np.ndarray:
     # Load image and return grayscale float image in [0,1] format
@@ -32,25 +35,137 @@ def compute_centered_spectrum(img: np.ndarray):
     mag_log = np.log1p(mag)
     return F, mag, mag_log
 
-def detect_spectral_peaks(mag: np.ndarray, exclude_radius: int = 10, top_percentile: float = 99.5):
-    # spike detector: mask out small central region, threshold at percentile and return centroids.
+def detect_spectral_peaks(mag: np.ndarray, exclude_radius: int = 10, top_percentile: float = 99.5, preview_radius: float = None):
+    global AUTOMATED_PEAK_DETECTOR
     H, W = mag.shape
-    cy, cx = H//2, W//2
-    yc, xc = np.ogrid[:H, :W]
-    rmap = np.sqrt((yc-cy)**2 + (xc-cx)**2)
-    mag_masked = mag.copy()
-    mag_masked[rmap <= exclude_radius] = 0.0
-    th = np.percentile(mag_masked, top_percentile)
-    peaks = mag_masked > th
-    lab = label(peaks)
-    props = regionprops(lab, intensity_image=mag_masked)
+    cy, cx = H // 2, W // 2
+    def _auto_detect():
+        yc, xc = np.ogrid[:H, :W]
+        rmap = np.sqrt((yc - cy)**2 + (xc - cx)**2)
+        mag_masked = mag.copy()
+        mag_masked[rmap <= exclude_radius] = 0.0
+        th = np.percentile(mag_masked, top_percentile)
+        peaks = mag_masked > th
+        lab = label(peaks)
+        props = regionprops(lab, intensity_image=mag_masked)
+        centers = []
+        for p in props:
+            ry, rx = p.centroid
+            centers.append((ry, rx, float(p.max_intensity)))
+        centers_sorted = sorted(centers, key=lambda x: -x[2])
+        return centers_sorted
+
+    if AUTOMATED_PEAK_DETECTOR:
+        return _auto_detect()
+
+    mag_display = np.log1p(mag)
+    mag_display = (mag_display - mag_display.min())
+    if mag_display.max() > 0:
+        mag_display = mag_display / mag_display.max()
+
+    fig, ax = plt.subplots(figsize=(8, 8))
+    ax.imshow(mag_display, cmap='gray', origin='upper')
+    ax.set_title("Select spectral peaks (left-click). Press ENTER when done.\n"
+                 "Press 'd' to enter drag-mode (adjust last pick), press ESC to exit drag-mode.",
+                 fontsize=9)
+    ax.axis('off')
+
+    picked = []           # list of (x, y) in data coordinates (float)
+    markers = []          # artist list for + marks
+    circles = []          # artist list for preview circles (one per pick)
+    drag_mode = False     # when True, moving mouse modifies last picked point
+    preview_radius_px = preview_radius if preview_radius is not None else None
+
+    def add_pick_visual(x, y):
+        m, = ax.plot(x, y, marker='+', color='r', markersize=10, mew=1.5)
+        markers.append(m)
+        if preview_radius_px is not None:
+            circ = Circle((x, y), preview_radius_px, fill=False, linestyle='dotted', linewidth=1.2)
+            ax.add_patch(circ)
+            circles.append(circ)
+        fig.canvas.draw_idle()
+
+    def update_last_visual(x, y):
+        if len(markers) >= 1:
+            markers[-1].set_data([x], [y])
+        if len(circles) >= 1 and preview_radius_px is not None:
+            circles[-1].center = (x, y)
+        fig.canvas.draw_idle()
+
+    def onclick(event):
+        nonlocal drag_mode
+        if event.inaxes is None:
+            return
+        if drag_mode:
+            return
+        if event.button == 1:
+            x, y = event.xdata, event.ydata
+            if x is None or y is None:
+                return
+            picked.append((x, y))
+            add_pick_visual(x, y)
+
+    def onmove(event):
+        if not drag_mode:
+            return
+        if event.inaxes is None:
+            return
+        if len(picked) == 0:
+            return
+        x, y = event.xdata, event.ydata
+        if x is None or y is None:
+            return
+        picked[-1] = (x, y)
+        update_last_visual(x, y)
+
+    def onkey(event):
+        nonlocal drag_mode
+        if event.key in ('enter', 'return'):
+            plt.close(fig)
+        elif event.key == 'd':
+            drag_mode = True
+            fig.suptitle("DRAG MODE: move mouse to adjust last selection. Press ESC to exit drag mode.", color='blue')
+            fig.canvas.draw_idle()
+        elif event.key == 'escape':
+            drag_mode = False
+            try:
+                fig.suptitle("")
+            except Exception:
+                pass
+            fig.canvas.draw_idle()
+
+    cid_click = fig.canvas.mpl_connect('button_press_event', onclick)
+    cid_move = fig.canvas.mpl_connect('motion_notify_event', onmove)
+    cid_key = fig.canvas.mpl_connect('key_press_event', onkey)
+
+    plt.show()   # blocks until enter pressed
+
+    try:
+        fig.canvas.mpl_disconnect(cid_click)
+        fig.canvas.mpl_disconnect(cid_move)
+        fig.canvas.mpl_disconnect(cid_key)
+    except Exception:
+        pass
+
+    if len(picked) == 0:
+        print("No points selected — falling back to automated detection.")
+        return _auto_detect()
+
+    # Convert picked x=col, y=row coords to (row, col) and sample intensity as 3x3 neighbourhood avg
     centers = []
-    for p in props:
-        ry, rx = p.centroid
-        centers.append((ry, rx, float(p.max_intensity)))
+    for (x, y) in picked:
+        cxp = int(round(x))
+        ryp = int(round(y))
+        cxp = int(np.clip(cxp, 0, W - 1))
+        ryp = int(np.clip(ryp, 0, H - 1))
+        r0 = max(0, ryp - 1); r1 = min(H, ryp + 2)
+        c0 = max(0, cxp - 1); c1 = min(W, cxp + 2)
+        inten = float(np.mean(mag[r0:r1, c0:c1]))
+        centers.append((float(ryp), float(cxp), inten))
+
     centers_sorted = sorted(centers, key=lambda x: -x[2])
-    # Return the list of (y, x, max_intensity) for each detected connected component
     return centers_sorted
+
 
 def report_peak_frequencies(centers, shape):
     # Prints frequency (cycles/pixel) and estimated spacing (pixels) for each center
@@ -154,11 +269,13 @@ def main():
     parser.add_argument('--out', default='./halftone_results', help='Output folder')
     parser.add_argument('--report-top', type=float, default=99.5, help='Percentile for peak detection threshold')
     args = parser.parse_args()
+    args.out += f'_{args.method}'
+    args.out += f'_sigma={args.sigma}'
 
     gray = load_image_gray(args.input)
     gray_rs, _ = rescale_max_size(gray, max_dim=args.max_dim)
     F, mag, mag_log = compute_centered_spectrum(gray_rs)
-    centers = detect_spectral_peaks(mag, exclude_radius=10, top_percentile=args.report_top)
+    centers = detect_spectral_peaks(mag, exclude_radius=10, top_percentile=args.report_top,preview_radius=args.sigma)
 
     #detected centers and estimated spacing
     report = report_peak_frequencies(centers, mag.shape)

@@ -122,9 +122,9 @@ endif
 q3_g: $(VENV_DIR)
 	@echo Running Q3_Gaussian...
 ifeq ($(OS),Windows_NT)
-	$(VENV_ACTIVATE) && cd Part2_Q3 && ..\$(VENV_PYTHON) q3_local.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method gaussian --sigma 6 && cd ..
+	$(VENV_ACTIVATE) && cd Part2_Q3 && ..\$(VENV_PYTHON) q3_local.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method gaussian --sigma 20 && cd ..
 else
-	. $(VENV_ACTIVATE) && cd Part2_Q3 && ../$(VENV_PYTHON) q3_local.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method gaussian --sigma 6 && cd ..
+	. $(VENV_ACTIVATE) && cd Part2_Q3 && ../$(VENV_PYTHON) q3_local.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method gaussian --sigma 20 && cd ..
 endif
 
 # Run Q3_Butterworth script
@@ -132,9 +132,9 @@ endif
 q3_b: $(VENV_DIR)
 	@echo Running Q3_Butterworth...
 ifeq ($(OS),Windows_NT)
-	$(VENV_ACTIVATE) && cd Part2_Q3 && ..\$(VENV_PYTHON) q3_local.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method butterworth --sigma 6 --butterworth-n 2 && cd ..
+	$(VENV_ACTIVATE) && cd Part2_Q3 && ..\$(VENV_PYTHON) q3_local.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method butterworth --sigma 20 --butterworth-n 2 && cd ..
 else
-	. $(VENV_ACTIVATE) && cd Part2_Q3 && ../$(VENV_PYTHON) q3_local.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method butterworth --sigma 6 --butterworth-n 2 && cd ..
+	. $(VENV_ACTIVATE) && cd Part2_Q3 && ../$(VENV_PYTHON) q3_local.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method butterworth --sigma 20 --butterworth-n 2 && cd ..
 endif
 
 # Run Q3_ideal script
@@ -142,7 +142,7 @@ endif
 q3_i: $(VENV_DIR)
 	@echo Running Q3_Ideal...
 ifeq ($(OS),Windows_NT)
-	$(VENV_ACTIVATE) && cd Part2_Q3 && ..\$(VENV_PYTHON) q3_local.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method ideal --sigma 6 && cd ..
+	$(VENV_ACTIVATE) && cd Part2_Q3 && ..\$(VENV_PYTHON) q3_local.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method ideal --sigma 20 && cd ..
 else
-	. $(VENV_ACTIVATE) && cd Part2_Q3 && ../$(VENV_PYTHON) q3_local.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method ideal --sigma 6 && cd ..
+	. $(VENV_ACTIVATE) && cd Part2_Q3 && ../$(VENV_PYTHON) q3_local.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method ideal --sigma 20 && cd ..
 endif

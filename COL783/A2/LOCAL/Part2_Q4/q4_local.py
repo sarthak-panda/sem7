@@ -11,12 +11,13 @@ from typing import Optional
 from scipy.signal import correlate2d
 
 USE_SCIPY = True
-try:
-    import scipy
-    from scipy.ndimage import median_filter as scipy_median_filter
-    from scipy.ndimage import uniform_filter
-except Exception:
-    USE_SCIPY = False
+if USE_SCIPY:
+    try:
+        import scipy
+        from scipy.ndimage import median_filter as scipy_median_filter
+        from scipy.ndimage import uniform_filter
+    except Exception:
+        USE_SCIPY = False
 
 OUT_DIR = Path("./q4_outputs")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -347,6 +348,7 @@ def plot_psnr(w_list: list, mean_psnrs: list, median_psnrs: list, title: str, ou
 
 
 def main_cli(args):
+    print('==========================PART-A PROCESSING...==============================\n')
     natural_img = load_image_or_generate(Path(args.input))
     natural_arr = np.asarray(natural_img).astype(np.float32)
     save_img_from_array(natural_arr, "input_natural_Q4_loaded_or_generated.png")
@@ -394,6 +396,7 @@ def main_cli(args):
     w_list = [1, 3, 5, 7, 9, 11]
 
     # Part (b)
+    print('==========================PART-B PROCESSING...==============================\n')
     for typ in noises:
         print(f"Running mean/median on constant image for noise: {typ}")
         mean_psnrs, median_psnrs, mean_imgs, median_imgs = experiment_mean_median(c_noisy[typ], const_arr, w_list)
@@ -407,6 +410,7 @@ def main_cli(args):
         print(f"Best median w={w_list[best_med_idx]} PSNR={median_psnrs[best_med_idx]:.3f}dB")
 
     # Part (c)
+    print('==========================PART-C PROCESSING...==============================\n')
     for typ in noises:
         print(f"Running mean/median on natural image for noise: {typ}")
         mean_psnrs, median_psnrs, mean_imgs, median_imgs = experiment_mean_median(f_noisy[typ], natural_arr, w_list)
@@ -420,6 +424,7 @@ def main_cli(args):
         print(f"Best median w={w_list[best_med_idx]} PSNR={median_psnrs[best_med_idx]:.3f}dB")
 
     # Part (d)
+    print('==========================PART-D PROCESSING...==============================\n')
     def rgb2gray(arr):
         return (0.3333 * arr[:, :, 0] + 0.3333 * arr[:, :, 1] + 0.3333 * arr[:, :, 2])
     gray_clean = rgb2gray(natural_arr)
@@ -455,7 +460,7 @@ if __name__ == '__main__':
 
 
 '''
-Notes:
+Self-Notes:
 (1) The downsampling is achieved using slice notation with a step value (also known as subsampling or nearest-neighbor downsampling).
 
 img = gray[::downsample, ::downsample].copy()

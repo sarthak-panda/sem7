@@ -3,60 +3,53 @@ import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
 from numpy.fft import fft2, ifft2, fftshift, ifftshift
-from scipy.signal import fftconvolve
-
-# ---- Utilities ------------------------------------------------------------
 
 def imread_gray(path):
     im = Image.open(path).convert('L')
     a = np.asarray(im).astype(np.float64)
     return a
 
+# def save_im(arr, path):
+#     arr_clamped = np.clip(arr, 0, 255).astype(np.uint8)
+#     path.parent.mkdir(parents=True, exist_ok=True)
+#     Image.fromarray(arr_clamped).save(path)
 
 def save_im(arr, path):
     arr_clamped = np.clip(arr, 0, 255).astype(np.uint8)
+    directory = os.path.dirname(path)
+    os.makedirs(directory, exist_ok=True) 
     Image.fromarray(arr_clamped).save(path)
-
 
 def psnr(a, b, peak=255.0):
     mse = np.mean((a.astype(np.float64) - b.astype(np.float64))**2)
     if mse == 0:
         return float('inf')
-    return 10.0 * np.log10((peak**2) / mse)
+    return 10.0 * np.log10((peak**2) / mse)#TODO: Fix peak for general
 
-# Build Gaussian PSF
 def gaussian_psf(shape=(256,256), sigma=3.0, size=25):
-    # make a centered gaussian kernel of given size and pad to shape
     ax = np.arange(-size//2 + 1., size//2 + 1.)
     xx, yy = np.meshgrid(ax, ax)
     k = np.exp(-(xx**2 + yy**2) / (2*sigma**2))
     k /= np.sum(k)
-    # pad to image shape and center it (so that fft gives correct phase)
     psf = np.zeros(shape)
     cy, cx = shape[0]//2, shape[1]//2
     sy, sx = size//2, size//2
     psf[cy - sy: cy - sy + size, cx - sx: cx - sx + size] = k
-    # shift so that kernel's (0,0) is at top-left for convolution via FFT multiplication
     psf = ifftshift(psf)
     return psf
 
-# Make frequency grid indices u,v centered at zero
 def freq_indices(shape):
     M, N = shape
     u = np.arange(-M//2, M - M//2)
     v = np.arange(-N//2, N - N//2)
-    U, V = np.meshgrid(v, u)  # note ordering: columns then rows
+    U, V = np.meshgrid(v, u)
     return U, V
 
-# Low-pass and band-pass visualization as requested
 def freq_band_images(img, max_level=6):
-    # img: 2D float array (0..255)
-    M, N = img.shape
     F = fftshift(fft2(img))
     U, V = freq_indices(img.shape)
     levels = []
     bands = []
-    # l0: only DC
     mask0 = (U == 0) & (V == 0)
     Li_prev = np.real(ifft2(ifftshift(F * mask0)))
     levels.append(Li_prev)
@@ -70,7 +63,6 @@ def freq_band_images(img, max_level=6):
         Li_prev = Li
     return levels, bands
 
-# Inverse filter (naive)
 def inverse_filter(g, h, eps=1e-6):
     M, N = g.shape
     H = fft2(h)
@@ -82,7 +74,6 @@ def inverse_filter(g, h, eps=1e-6):
     fhat = np.real(ifft2(Fhat))
     return fhat, Fhat, H, G
 
-# Wiener filter with constant K (S_n / S_f)
 def wiener_filter_constant_K(g, h, K):
     H = fft2(h)
     G = fft2(g)
@@ -92,16 +83,11 @@ def wiener_filter_constant_K(g, h, K):
     fhat = np.real(ifft2(Fhat))
     return fhat, Fhat
 
-# Regularized deconvolution with squared gradient norm
-# Frequency response of finite-difference forward operator: D_x = 1 - exp(-j*omega_x)
-# |D_x|^2 = 4 sin^2(omega_x/2) where omega_x = 2*pi*u/M
-# So P(u,v) = |D_x|^2 + |D_y|^2 = 4( sin^2(pi*u/M) + sin^2(pi*v/N) )
-
+# Details Explained in Report
 def regularized_deconv(g, h, lam):
     M, N = g.shape
     H = fft2(h)
     G = fft2(g)
-    # frequency coords u=0..M-1 mapping to omega = 2*pi*u/M
     urange = np.arange(0, M)
     vrange = np.arange(0, N)
     U, V = np.meshgrid(vrange, urange)
@@ -113,29 +99,20 @@ def regularized_deconv(g, h, lam):
     fhat = np.real(ifft2(Fhat))
     return fhat, Fhat
 
-# -- Main pipeline -----------------------------------------------------------
-
 def main():
     outdir = 'q5_outputs'
     os.makedirs(outdir, exist_ok=True)
-
-    # load image f
     fp = os.path.join('..', 'Testcases', 'Q5.png')
     f = imread_gray(fp)
     M, N = f.shape
     print('Loaded', fp, 'shape=', f.shape)
-
-    # build blur PSF (large amount of blur)
     psf = gaussian_psf(shape=(M, N), sigma=4.0, size=25)
     save_im(np.real(ifft2(fft2(psf))).astype(np.float64), os.path.join(outdir, 'psf_centered.png'))
-
-    # create degraded image g by convolution in frequency domain and then add gaussian noise with PSNR=20dB
     F = fft2(f)
     H = fft2(psf)
     conv = np.real(ifft2(H * F))
 
     def add_noise_with_psnr(signal, target_psnr_db):
-        # compute signal power per pixel
         sig_power = np.mean(signal**2)
         sigma2 = sig_power / (10.0**(target_psnr_db / 10.0))
         sigma = np.sqrt(sigma2)
@@ -147,43 +124,42 @@ def main():
     save_im(g20, os.path.join(outdir, 'g_psnr20.png'))
     print('Added noise PSNR=20dB sigma=', sigma20)
 
-    # (a) Visualize frequency bands for f and g
+    # Part - A
+    print('==========================PART-A PROCESSING...==============================\n')
     max_level = int(np.floor(np.log2(min(M,N)))) - 1
     max_level = min(max_level, 6)
     l_f, b_f = freq_band_images(f, max_level=max_level)
     l_g, b_g = freq_band_images(g20, max_level=max_level)
-
-    # save a few levels and bands
     for i, Li in enumerate(l_f):
-        save_im(Li, os.path.join(outdir, f'f_lowpass_l{i}.png'))
+        save_im(Li, os.path.join(outdir, f'PartA/f/lowpass/f_lowpass_l{i}.png'))
     for i, Bi in enumerate(b_f, start=1):
-        save_im(Bi, os.path.join(outdir, f'f_band_b{i}.png'))
-
+        save_im(Bi, os.path.join(outdir, f'PartA/f/band/f_band_b{i}.png'))
     for i, Li in enumerate(l_g):
-        save_im(Li, os.path.join(outdir, f'g_lowpass_l{i}.png'))
+        save_im(Li, os.path.join(outdir, f'PartA/g/lowpass/g_lowpass_l{i}.png'))
     for i, Bi in enumerate(b_g, start=1):
-        save_im(Bi, os.path.join(outdir, f'g_band_b{i}.png'))
+        save_im(Bi, os.path.join(outdir, f'PartA/g/band/g_band_b{i}.png'))
 
-    # (b) inverse filter
+    # Part - B
+    print('==========================PART-B PROCESSING...==============================\n')
     f_inv, Finv, Hfull, Gfull = inverse_filter(g20, psf, eps=1e-3)
-    save_im(f_inv, os.path.join(outdir, 'f_inverse.png'))
+    save_im(f_inv, os.path.join(outdir, 'PartB/f_inverse.png'))
     l_inv, b_inv = freq_band_images(f_inv, max_level=max_level)
     for i, Li in enumerate(l_inv):
-        save_im(Li, os.path.join(outdir, f'inv_lowpass_l{i}.png'))
+        save_im(Li, os.path.join(outdir, f'PartB/inv_lowpass/inv_lowpass_l{i}.png'))
     for i, Bi in enumerate(b_inv, start=1):
-        save_im(Bi, os.path.join(outdir, f'inv_band_b{i}.png'))
-
+        save_im(Bi, os.path.join(outdir, f'PartB/inv_band/inv_band_b{i}.png'))
     print('Inverse PSNR:', psnr(f, f_inv))
 
-    # (c) estimate S_n and S_f using Plancherel / Parseval
-    # noise variance per pixel is sigma20**2
+    # Part - C
+    print('==========================PART-C PROCESSING...==============================\n')
     sigma2 = sigma20**2
     Sn = (M * N) * sigma2
     Sf = np.sum(f.astype(np.float64)**2)
     K_est = Sn / Sf
     print('Estimated S_n =', Sn, 'S_f=', Sf, '=> K_est=', K_est)
 
-    # (d) Wiener filtering sweeping K values
+    # Part - D
+    print('==========================PART-D PROCESSING...==============================\n')
     Ks = np.logspace(np.log10(K_est) - 3, np.log10(K_est) + 3, num=60)
     psnrs = []
     f_wiens = []
@@ -192,14 +168,11 @@ def main():
         p = psnr(f, fhat)
         psnrs.append(p)
         f_wiens.append(fhat)
-
     psnrs = np.array(psnrs)
     best_idx = np.nanargmax(psnrs)
     bestK = Ks[best_idx]
     bestf = f_wiens[best_idx]
     print('Best Wiener K=', bestK, 'PSNR=', psnrs[best_idx])
-
-    # plot PSNR vs K and mark K_est
     plt.figure(figsize=(6,4))
     plt.semilogx(Ks, psnrs)
     plt.axvline(K_est, color='red', linestyle='--', label=f'K_est={K_est:.2e}')
@@ -210,22 +183,24 @@ def main():
     plt.title('Wiener PSNR vs K (PSNR target 20 dB)')
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(os.path.join(outdir, 'wiener_psnr_vs_K_psnr20.png'))
+    output_dir = os.path.join(outdir, 'PartD')
+    os.makedirs(output_dir, exist_ok=True)
+    plt.savefig(os.path.join(output_dir, 'wiener_psnr_vs_K_psnr20.png'))
     plt.close()
-
-    save_im(bestf, os.path.join(outdir, 'wiener_best_psnr20.png'))
+    save_im(bestf, os.path.join(outdir, 'PartD/wiener_best_psnr20.png'))
     l_wien, b_wien = freq_band_images(bestf, max_level=max_level)
     for i, Li in enumerate(l_wien):
-        save_im(Li, os.path.join(outdir, f'wien_lowpass_l{i}.png'))
+        save_im(Li, os.path.join(outdir, f'PartD/wien_lowpass/wien_lowpass_l{i}.png'))
     for i, Bi in enumerate(b_wien, start=1):
-        save_im(Bi, os.path.join(outdir, f'wien_band_b{i}.png'))
+        save_im(Bi, os.path.join(outdir, f'PartD/wien_band/wien_band_b{i}.png'))
 
-    # (e) Repeat for PSNR 30dB and 10dB
+    # Part - E
+    print('==========================PART-E PROCESSING...==============================\n')
     results_noise_levels = {}
     for target_psnr in [30.0, 10.0]:
         np.random.seed(0)
         g, sigma = add_noise_with_psnr(conv, target_psnr)
-        save_im(g, os.path.join(outdir, f'g_psnr{int(target_psnr)}.png'))
+        save_im(g, os.path.join(outdir, f'PartE/g_psnr{int(target_psnr)}.png'))
         sigma2 = sigma**2
         Sn = (M * N) * sigma2
         Sf = np.sum(f**2)
@@ -246,7 +221,6 @@ def main():
             'best_idx': idx_best,
             'bestf': f_wiens_local[idx_best]
         }
-        # save plot
         plt.figure(figsize=(6,4))
         plt.semilogx(Ks_local, psnrs_local)
         plt.axvline(K_est_local, color='red', linestyle='--', label=f'K_est={K_est_local:.2e}')
@@ -257,17 +231,19 @@ def main():
         plt.grid(True)
         plt.legend()
         plt.tight_layout()
-        plt.savefig(os.path.join(outdir, f'wiener_psnr_vs_K_psnr{int(target_psnr)}.png'))
+        output_dir = os.path.join(outdir, 'PartE')
+        os.makedirs(output_dir, exist_ok=True)
+        plt.savefig(os.path.join(output_dir, f'wiener_psnr_vs_K_psnr{int(target_psnr)}.png'))
         plt.close()
-
-        save_im(results_noise_levels[target_psnr]['bestf'], os.path.join(outdir, f'wiener_best_psnr{int(target_psnr)}.png'))
+        save_im(results_noise_levels[target_psnr]['bestf'], os.path.join(outdir, f'PartE/wiener_best_psnr{int(target_psnr)}.png'))
         l_w, b_w = freq_band_images(results_noise_levels[target_psnr]['bestf'], max_level=max_level)
         for i, Li in enumerate(l_w):
-            save_im(Li, os.path.join(outdir, f'wien_psnr{int(target_psnr)}_lowpass_l{i}.png'))
+            save_im(Li, os.path.join(outdir, f'PartE/wien_psnr{int(target_psnr)}_lowpass/wien_psnr{int(target_psnr)}_lowpass_l{i}.png'))
         for i, Bi in enumerate(b_w, start=1):
-            save_im(Bi, os.path.join(outdir, f'wien_psnr{int(target_psnr)}_band_b{i}.png'))
+            save_im(Bi, os.path.join(outdir, f'PartE/wien_psnr{int(target_psnr)}_band/wien_psnr{int(target_psnr)}_band_b{i}.png'))
 
-    # (f) Regularized deconvolution (squared gradient norm) sweeping lambda
+    # Part- F
+    print('==========================PART-F PROCESSING...==============================\n')
     lambdas = np.logspace(-6, 1, num=60)
     psnrs_reg = []
     f_regs = []
@@ -280,7 +256,6 @@ def main():
     best_lambda = lambdas[best_idx_reg]
     bestf_reg = f_regs[best_idx_reg]
     print('Best regularization lambda=', best_lambda, 'PSNR=', psnrs_reg[best_idx_reg])
-
     plt.figure(figsize=(6,4))
     plt.semilogx(lambdas, psnrs_reg)
     plt.scatter([best_lambda], [psnrs_reg[best_idx_reg]], color='green', label=f'best lambda={best_lambda:.2e}\nPSNR={psnrs_reg[best_idx_reg]:.2f}dB')
@@ -290,23 +265,16 @@ def main():
     plt.grid(True)
     plt.legend()
     plt.tight_layout()
-    plt.savefig(os.path.join(outdir, 'reg_psnr_vs_lambda.png'))
+    output_dir = os.path.join(outdir, 'PartF')
+    os.makedirs(output_dir, exist_ok=True)
+    plt.savefig(os.path.join(output_dir, 'reg_psnr_vs_lambda.png'))
     plt.close()
-
-    save_im(bestf_reg, os.path.join(outdir, 'reg_best.png'))
+    save_im(bestf_reg, os.path.join(outdir, 'PartF/reg_best.png'))
     l_reg, b_reg = freq_band_images(bestf_reg, max_level=max_level)
     for i, Li in enumerate(l_reg):
-        save_im(Li, os.path.join(outdir, f'reg_lowpass_l{i}.png'))
+        save_im(Li, os.path.join(outdir, f'PartF/reg_lowpass/reg_lowpass_l{i}.png'))
     for i, Bi in enumerate(b_reg, start=1):
-        save_im(Bi, os.path.join(outdir, f'reg_band_b{i}.png'))
-
-    # Summarize outputs
-    print('\nOutputs written to folder:', outdir)
-    print(' - degraded images: g_psnr20.png, g_psnr30.png, g_psnr10.png')
-    print(' - inverse result: f_inverse.png')
-    print(' - best Wiener results: wiener_best_psnr20.png, wiener_best_psnr30.png, wiener_best_psnr10.png')
-    print(' - best regularized result: reg_best.png')
-    print(' - many lowpass/band images named *_lowpass_*.png and *_band_*.png')
+        save_im(Bi, os.path.join(outdir, f'PartF/reg_band/reg_band_b{i}.png'))
 
 if __name__ == '__main__':
     main()
