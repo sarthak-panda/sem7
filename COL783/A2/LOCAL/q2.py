@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import time
 import math
 from typing import List
+import argparse 
 
-# ---------- Helpers ----------
 def ensure_dir(p: str):
     os.makedirs(p, exist_ok=True)
 
@@ -22,7 +22,6 @@ def save_rgb(path: str, arr: np.ndarray):
     a8 = (255.0 * a).astype(np.uint8)
     cv2.imwrite(path, cv2.cvtColor(a8, cv2.COLOR_RGB2BGR))
 
-# ---------- PSF and transforms ----------
 def make_star_psf(size: int = 200, num_spikes: int = 5, outer_r: int = 70, inner_r: int = 30) -> np.ndarray:
     canvas = np.zeros((size, size), dtype=np.uint8)
     cx, cy = size // 2, size // 2
@@ -57,7 +56,7 @@ def gamma_correction(img: np.ndarray, gamma: float) -> np.ndarray:
 def mirror_pad_2d(img: np.ndarray, pad_h: int, pad_w: int) -> np.ndarray:
     return np.pad(img, ((pad_h, pad_h), (pad_w, pad_w)), mode='reflect')
 
-# ---------- Spatial convolution (uses cv2.filter2D but flips kernel for convolution semantics) ----------
+# Spatial convolution using cv2.filter2D but fliping the kernel for convolution semantics
 def spatial_blur_channel(img: np.ndarray, psf: np.ndarray, borderType=cv2.BORDER_REFLECT) -> np.ndarray:
     psf_conv = np.flipud(np.fliplr(psf)).astype(np.float32)
     out = cv2.filter2D(img.astype(np.float32), -1, psf_conv, borderType=borderType)
@@ -76,7 +75,6 @@ def spatial_blur_color(img_rgb: np.ndarray, psf: np.ndarray, gamma: float = 2.2)
     out = np.clip(out, 0.0, 1.0)
     return out
 
-# ---------- Frequency domain convolution ----------
 def frequency_blur_channel(img: np.ndarray, psf: np.ndarray) -> np.ndarray:
     h, w = img.shape
     ph, pw = psf.shape
@@ -126,12 +124,6 @@ def frequency_blur_color(img_rgb: np.ndarray, psf: np.ndarray, gamma: float = 2.
         g_padded = np.fft.ifft2(G).real
         g = g_padded[pad_h:pad_h + img_chan.shape[0], pad_w:pad_w + img_chan.shape[1]]
 
-        def norm01(x):
-            x = np.array(x, dtype=np.float32)
-            x = x - x.min()
-            denom = x.max() if x.max() != 0 else 1.0
-            return x / denom
-
         plt.figure(figsize=(15, 8))
         plt.subplot(2, 4, 1); plt.imshow(img_chan, cmap='gray'); plt.title('f: Original (chan 0)'); plt.axis('off')
         plt.subplot(2, 4, 2); plt.imshow(np.log1p(np.abs(np.fft.fftshift(F))), cmap='gray'); plt.title('|F|'); plt.axis('off')
@@ -141,16 +133,21 @@ def frequency_blur_color(img_rgb: np.ndarray, psf: np.ndarray, gamma: float = 2.
         plt.subplot(2, 4, 6); plt.imshow(img_padded, cmap='gray'); plt.title('Padded Input'); plt.axis('off')
         plt.subplot(2, 4, 7); plt.imshow(H_pad, cmap='gray'); plt.title('Positioned PSF'); plt.axis('off')
         plt.tight_layout()
-        # save intermediate figure BEFORE showing
         ensure_dir('./Q2_Outputs/PartC')
         plt.savefig('./Q2_Outputs/PartC/frequency_intermediates.png', bbox_inches='tight')
         plt.show()
         plt.close()
-
     return out
 
-# ---------- Main: Parts A,B,C,D ----------
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Q2')
+    parser.add_argument(
+        '--photo_path', 
+        type=str, 
+        default='../Testcases/Q2_SYNTH.png', # Use the original path as the default
+        help='Path to the real photograph image'
+    )
+    args = parser.parse_args()
     OUT_ROOT = './Q2_Outputs'
     PART_A = os.path.join(OUT_ROOT, 'PartA')
     PART_B = os.path.join(OUT_ROOT, 'PartB')
@@ -168,7 +165,6 @@ if __name__ == '__main__':
     sizes = [150, 80, 40, 20, 10]
     psfs = resize_and_normalize_psfs(base_star, sizes)
 
-    # save and display PSFs
     fig, axes = plt.subplots(1, len(psfs), figsize=(15, 3))
     for i, psf in enumerate(psfs):
         axes[i].imshow(psf, cmap='gray')
@@ -188,7 +184,7 @@ if __name__ == '__main__':
         impulse_img[y, x] = 1.0
     save_gray(os.path.join(PART_B, 'impulse_original.png'), impulse_img)
 
-    psf_small = psfs[3]
+    psf_small = psfs[0]
     spatial_impulse = spatial_blur_channel(impulse_img, psf_small)
     save_gray(os.path.join(PART_B, 'impulse_spatial_blur.png'), spatial_impulse)
 
@@ -201,29 +197,25 @@ if __name__ == '__main__':
     plt.close()
 
     # Real photograph
-    PHOTO_PATH = '../Testcases//new.jpg'  # change as needed
+    PHOTO_PATH = args.photo_path 
     photo = cv2.imread(PHOTO_PATH, cv2.IMREAD_COLOR)
-    if photo is None:
-        print('Photo not found at', PHOTO_PATH, ' — skipping Part B photo blur.')
-        photo = None
-    else:
-        photo = cv2.cvtColor(photo, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
-        h0, w0 = photo.shape[:2]
-        if (h0 < 900) or (w0 < 1500):
-            # target 1000 x 2000 (height x width) but cv2.resize args are (width,height)
-            photo = cv2.resize(photo, (2000, 1000), interpolation=cv2.INTER_AREA)
-        save_rgb(os.path.join(PART_B, 'photo_original.png'), photo)
+    photo = cv2.cvtColor(photo, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+    h0, w0 = photo.shape[:2]
+    if (h0 < 900) or (w0 < 1500):
+        # target 1000 x 2000 (height x width) but recall cv2.resize args are (width,height)
+        photo = cv2.resize(photo, (2000, 1000), interpolation=cv2.INTER_AREA)
+    save_rgb(os.path.join(PART_B, 'photo_original.png'), photo)
 
-        spatial_photo = spatial_blur_color(photo, psf_small, gamma=2.2)
-        save_rgb(os.path.join(PART_B, 'photo_spatial_blur.png'), spatial_photo)
+    spatial_photo = spatial_blur_color(photo, psf_small, gamma=2.2)
+    save_rgb(os.path.join(PART_B, 'photo_spatial_blur.png'), spatial_photo)
 
-        plt.figure(figsize=(12, 6))
-        plt.subplot(1, 2, 1); plt.imshow(photo); plt.title('Original Photo'); plt.axis('off')
-        plt.subplot(1, 2, 2); plt.imshow(spatial_photo); plt.title('Spatial Blur'); plt.axis('off')
-        plt.tight_layout()
-        plt.savefig(os.path.join(PART_B, 'photo_spatial_vs_original.png'), bbox_inches='tight')
-        plt.show()
-        plt.close()
+    plt.figure(figsize=(12, 6))
+    plt.subplot(1, 2, 1); plt.imshow(photo); plt.title('Original Photo'); plt.axis('off')
+    plt.subplot(1, 2, 2); plt.imshow(spatial_photo); plt.title('Spatial Blur'); plt.axis('off')
+    plt.tight_layout()
+    plt.savefig(os.path.join(PART_B, 'photo_spatial_vs_original.png'), bbox_inches='tight')
+    plt.show()
+    plt.close()
 
     # --- Part C ---
     print('====Part-C Processing...=====')
@@ -239,29 +231,28 @@ if __name__ == '__main__':
     plt.show()
     plt.close()
 
-    if photo is not None:
-        freq_photo = frequency_blur_color(photo, psf_small, gamma=2.2, show_intermediate=True)
-        save_rgb(os.path.join(PART_C, 'photo_frequency_blur.png'), freq_photo)
+    freq_photo = frequency_blur_color(photo, psf_small, gamma=2.2, show_intermediate=True)
+    save_rgb(os.path.join(PART_C, 'photo_frequency_blur.png'), freq_photo)
 
-        plt.figure(figsize=(12, 6))
-        plt.subplot(1, 2, 1); plt.imshow(spatial_photo); plt.title('Spatial Domain Blur'); plt.axis('off')
-        plt.subplot(1, 2, 2); plt.imshow(freq_photo); plt.title('Frequency Domain Blur'); plt.axis('off')
-        plt.tight_layout()
-        plt.savefig(os.path.join(PART_C, 'photo_spatial_vs_frequency.png'), bbox_inches='tight')
-        plt.show()
-        plt.close()
+    plt.figure(figsize=(12, 6))
+    plt.subplot(1, 2, 1); plt.imshow(spatial_photo); plt.title('Spatial Domain Blur'); plt.axis('off')
+    plt.subplot(1, 2, 2); plt.imshow(freq_photo); plt.title('Frequency Domain Blur'); plt.axis('off')
+    plt.tight_layout()
+    plt.savefig(os.path.join(PART_C, 'photo_spatial_vs_frequency.png'), bbox_inches='tight')
+    plt.show()
+    plt.close()
 
-        # linear-domain diagnostic diff
-        img_lin = gamma_correction(photo, 1.0 / 2.2)
-        spatial_no_gamma = np.zeros_like(img_lin)
-        freq_no_gamma = np.zeros_like(img_lin)
-        for c in range(3):
-            spatial_no_gamma[..., c] = spatial_blur_channel(img_lin[..., c], psf_small)
-            freq_no_gamma[..., c] = frequency_blur_channel(img_lin[..., c], psf_small)
-        diff_no_gamma = np.abs(spatial_no_gamma - freq_no_gamma)
-        diff_max = np.max(diff_no_gamma, axis=2)
-        save_gray(os.path.join(PART_C, 'photo_linear_diff_max.png'), diff_max)
-        print('Photo (linear) - max abs diff:', diff_no_gamma.max(), 'mean:', diff_no_gamma.mean())
+    # just doing linear-domain diff for diagnostic purposes
+    img_lin = gamma_correction(photo, 1.0 / 2.2)
+    spatial_no_gamma = np.zeros_like(img_lin)
+    freq_no_gamma = np.zeros_like(img_lin)
+    for c in range(3):
+        spatial_no_gamma[..., c] = spatial_blur_channel(img_lin[..., c], psf_small)
+        freq_no_gamma[..., c] = frequency_blur_channel(img_lin[..., c], psf_small)
+    diff_no_gamma = np.abs(spatial_no_gamma - freq_no_gamma)
+    diff_max = np.max(diff_no_gamma, axis=2)
+    save_gray(os.path.join(PART_C, 'photo_linear_diff_max.png'), diff_max)
+    print('Photo (linear) - max abs diff:', diff_no_gamma.max(), 'mean:', diff_no_gamma.mean())
 
     # --- Part D: Timing ---
     print('====Part-D Processing...=====')
