@@ -42,8 +42,8 @@ def load_image(path):
     return arr
 
 # load input images (expects 'apple.png' and 'orange.png')
-f = load_image("apple.png")
-g = load_image("orange.png")
+f = load_image("../Testcases/q1_apple.jpg")
+g = load_image("../Testcases/q1_orange.jpg")
 
 # If shapes differ, center-crop larger image to the smaller image size
 if f.shape != g.shape:
@@ -187,35 +187,52 @@ print(f"Saved binary mask and hard composite under {PART_C_DIR}")
 print("======Part-D processing...======")
 
 def build_gaussian_pyramid_mask(mask, max_levels=None):
-    gp = [mask]
-    cur = mask
+    """
+    Build gaussian pyramid for a single-channel mask.
+    Ensures blurred arrays always have shape (H, W, 1).
+    """
+    gp = [mask if mask.ndim == 3 else mask[..., np.newaxis]]
+    cur = gp[0]
     level = 0
     while True:
         if max_levels is not None and level+1 >= max_levels:
             break
         if cur.shape[0] < 16 or cur.shape[1] < 16:
             break
+
+        # blur mask (keep it single-channel with trailing dim)
         if _HAS_CV2:
+            # cv2.filter2D will return 2D for single-channel input,
+            # so force shape back to (H, W, 1) after filtering.
             k2d = np.outer(kernel_1d, kernel_1d).astype(np.float32)
-            blurred = cv2.filter2D(cur, -1, k2d, borderType=cv2.BORDER_REFLECT)
+            # cv2 expects single-channel to be HxW (not HxWx1) so pass squeezed
+            blurred2d = cv2.filter2D(cur[..., 0], -1, k2d, borderType=cv2.BORDER_REFLECT)
+            blurred = blurred2d[..., np.newaxis]
         else:
-            # perform separable conv on single channel
+            # separable conv keeping the channel dimension
             pad = len(kernel_1d)//2
-            Hc,Wc = cur.shape[:2]
+            Hc, Wc = cur.shape[:2]
             tmp = np.zeros_like(cur, dtype=np.float32)
+            # rows
             for i in range(Hc):
-                row = cur[i,:,0]
+                row = cur[i, :, 0]
                 row_p = np.pad(row, pad, mode='reflect')
-                tmp[i,:,0] = np.convolve(row_p, kernel_1d, mode='valid')
-            blurred = np.zeros_like(tmp)
+                tmp[i, :, 0] = np.convolve(row_p, kernel_1d, mode='valid')
+            # cols
+            blurred = np.zeros_like(tmp, dtype=np.float32)
             for j in range(Wc):
-                col = tmp[:,j,0]
+                col = tmp[:, j, 0]
                 col_p = np.pad(col, pad, mode='reflect')
-                blurred[:,j,0] = np.convolve(col_p, kernel_1d, mode='valid')
-        nxt = blurred[::2, ::2, :]
+                blurred[:, j, 0] = np.convolve(col_p, kernel_1d, mode='valid')
+
+        # downsample and ensure the result keeps the channel axis
+        nxt = blurred[::2, ::2]
+        if nxt.ndim == 2:
+            nxt = nxt[..., np.newaxis]
         gp.append(nxt)
         cur = nxt
         level += 1
+
     return gp
 
 gp_m = build_gaussian_pyramid_mask(m)

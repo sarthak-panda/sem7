@@ -36,13 +36,6 @@ help:
 	@echo   install  - Install/update dependencies in existing venv
 	@echo   info     - Show environment information
 	@echo   q1       - Run Part1_Q1/q1.py with activated environment
-	@echo   q2_synth       - Run Part1_Q2/q2.py with activated environment
-	@echo   q2_act       - Run Part1_Q2/q2.py with activated environment
-	@echo   q3_i       - Run Part1_Q2/q2.py with activated environment
-	@echo   q3_g       - Run Part1_Q2/q2.py with activated environment
-	@echo   q3_b       - Run Part1_Q2/q2.py with activated environment
-	@echo   q4       - Run Part1_Q2/q2.py with activated environment
-	@echo   q5       - Run Part1_Q2/q2.py with activated environment
 
 # Create virtual environment and install dependencies
 .PHONY: build
@@ -106,77 +99,77 @@ rebuild: clean build
 q1: $(VENV_DIR)
 	@echo Running Q1...
 ifeq ($(OS),Windows_NT)
-	$(VENV_ACTIVATE) && cd Part1_Q1 && ..\$(VENV_PYTHON) q1.py && cd ..
+	$(VENV_ACTIVATE) && cd Part1_Q1 && ..\$(VENV_PYTHON) q1_local.py && cd ..
 else
-	. $(VENV_ACTIVATE) && cd Part1_Q1 && ../$(VENV_PYTHON) q1.py && cd ..
+	. $(VENV_ACTIVATE) && cd Part1_Q1 && ../$(VENV_PYTHON) q1_local.py && cd ..
 endif
 
 # Run Q2 script on actual image input
-.PHONY: q2_act
-q2_act: $(VENV_DIR)
-	@echo Running Q2...
-ifeq ($(OS),Windows_NT)
-	$(VENV_ACTIVATE) && cd Part1_Q2 && ..\$(VENV_PYTHON) q2.py --photo_path ../Testcases/Q2_ACTUAL.jpg && cd ..
-else
-	. $(VENV_ACTIVATE) && cd Part1_Q2 && ../$(VENV_PYTHON) q2.py --photo_path ../Testcases/Q2_ACTUAL.jpg && cd ..
-endif
+# .PHONY: q2_act
+# q2_act: $(VENV_DIR)
+# 	@echo Running Q2...
+# ifeq ($(OS),Windows_NT)
+# 	$(VENV_ACTIVATE) && cd Part1_Q2 && ..\$(VENV_PYTHON) q2.py --photo_path ../Testcases/Q2_ACTUAL.jpg && cd ..
+# else
+# 	. $(VENV_ACTIVATE) && cd Part1_Q2 && ../$(VENV_PYTHON) q2.py --photo_path ../Testcases/Q2_ACTUAL.jpg && cd ..
+# endif
 
-# Run Q2  on synthetic image input
-.PHONY: q2_synth
-q2_synth: $(VENV_DIR)
-	@echo Running Q2...
-ifeq ($(OS),Windows_NT)
-	$(VENV_ACTIVATE) && cd Part1_Q2 && ..\$(VENV_PYTHON) q2.py && cd ..
-else
-	. $(VENV_ACTIVATE) && cd Part1_Q2 && ../$(VENV_PYTHON) q2.py && cd ..
-endif
+# # Run Q2  on synthetic image input
+# .PHONY: q2_synth
+# q2_synth: $(VENV_DIR)
+# 	@echo Running Q2...
+# ifeq ($(OS),Windows_NT)
+# 	$(VENV_ACTIVATE) && cd Part1_Q2 && ..\$(VENV_PYTHON) q2.py && cd ..
+# else
+# 	. $(VENV_ACTIVATE) && cd Part1_Q2 && ../$(VENV_PYTHON) q2.py && cd ..
+# endif
 
-# Run Q3_Gaussian script
-.PHONY: q3_g
-q3_g: $(VENV_DIR)
-	@echo Running Q3_Gaussian...
-ifeq ($(OS),Windows_NT)
-	$(VENV_ACTIVATE) && cd Part2_Q3 && ..\$(VENV_PYTHON) q3.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method gaussian --sigma 20 && cd ..
-else
-	. $(VENV_ACTIVATE) && cd Part2_Q3 && ../$(VENV_PYTHON) q3.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method gaussian --sigma 20 && cd ..
-endif
+# # Run Q3_Gaussian script
+# .PHONY: q3_g
+# q3_g: $(VENV_DIR)
+# 	@echo Running Q3_Gaussian...
+# ifeq ($(OS),Windows_NT)
+# 	$(VENV_ACTIVATE) && cd Part2_Q3 && ..\$(VENV_PYTHON) q3.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method gaussian --sigma 20 && cd ..
+# else
+# 	. $(VENV_ACTIVATE) && cd Part2_Q3 && ../$(VENV_PYTHON) q3.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method gaussian --sigma 20 && cd ..
+# endif
 
-# Run Q3_Butterworth script
-.PHONY: q3_b
-q3_b: $(VENV_DIR)
-	@echo Running Q3_Butterworth...
-ifeq ($(OS),Windows_NT)
-	$(VENV_ACTIVATE) && cd Part2_Q3 && ..\$(VENV_PYTHON) q3.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method butterworth --sigma 20 --butterworth-n 2 && cd ..
-else
-	. $(VENV_ACTIVATE) && cd Part2_Q3 && ../$(VENV_PYTHON) q3.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method butterworth --sigma 20 --butterworth-n 2 && cd ..
-endif
+# # Run Q3_Butterworth script
+# .PHONY: q3_b
+# q3_b: $(VENV_DIR)
+# 	@echo Running Q3_Butterworth...
+# ifeq ($(OS),Windows_NT)
+# 	$(VENV_ACTIVATE) && cd Part2_Q3 && ..\$(VENV_PYTHON) q3.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method butterworth --sigma 20 --butterworth-n 2 && cd ..
+# else
+# 	. $(VENV_ACTIVATE) && cd Part2_Q3 && ../$(VENV_PYTHON) q3.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method butterworth --sigma 20 --butterworth-n 2 && cd ..
+# endif
 
-# Run Q3_ideal script
-.PHONY: q3_i
-q3_i: $(VENV_DIR)
-	@echo Running Q3_Ideal...
-ifeq ($(OS),Windows_NT)
-	$(VENV_ACTIVATE) && cd Part2_Q3 && ..\$(VENV_PYTHON) q3.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method ideal --sigma 20 && cd ..
-else
-	. $(VENV_ACTIVATE) && cd Part2_Q3 && ../$(VENV_PYTHON) q3.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method ideal --sigma 20 && cd ..
-endif
+# # Run Q3_ideal script
+# .PHONY: q3_i
+# q3_i: $(VENV_DIR)
+# 	@echo Running Q3_Ideal...
+# ifeq ($(OS),Windows_NT)
+# 	$(VENV_ACTIVATE) && cd Part2_Q3 && ..\$(VENV_PYTHON) q3.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method ideal --sigma 20 && cd ..
+# else
+# 	. $(VENV_ACTIVATE) && cd Part2_Q3 && ../$(VENV_PYTHON) q3.py --input ..\Testcases\Q3_Gordon_De_Lisle_in_1943.jpg --method ideal --sigma 20 && cd ..
+# endif
 
-# Run Q4 script
-.PHONY: q4
-q4: $(VENV_DIR)
-	@echo Running Q4...
-ifeq ($(OS),Windows_NT)
-	$(VENV_ACTIVATE) && cd Part2_Q4 && ..\$(VENV_PYTHON) q4.py && cd ..
-else
-	. $(VENV_ACTIVATE) && cd Part2_Q4 && ../$(VENV_PYTHON) q4.py && cd ..
-endif
+# # Run Q4 script
+# .PHONY: q4
+# q4: $(VENV_DIR)
+# 	@echo Running Q4...
+# ifeq ($(OS),Windows_NT)
+# 	$(VENV_ACTIVATE) && cd Part2_Q4 && ..\$(VENV_PYTHON) q4.py && cd ..
+# else
+# 	. $(VENV_ACTIVATE) && cd Part2_Q4 && ../$(VENV_PYTHON) q4.py && cd ..
+# endif
 
-# Run Q5 script
-.PHONY: q5
-q5: $(VENV_DIR)
-	@echo Running Q5...
-ifeq ($(OS),Windows_NT)
-	$(VENV_ACTIVATE) && cd Part2_Q5 && ..\$(VENV_PYTHON) q5.py && cd ..
-else
-	. $(VENV_ACTIVATE) && cd Part2_Q5 && ../$(VENV_PYTHON) q5.py && cd ..
-endif
+# # Run Q5 script
+# .PHONY: q5
+# q5: $(VENV_DIR)
+# 	@echo Running Q5...
+# ifeq ($(OS),Windows_NT)
+# 	$(VENV_ACTIVATE) && cd Part2_Q5 && ..\$(VENV_PYTHON) q5.py && cd ..
+# else
+# 	. $(VENV_ACTIVATE) && cd Part2_Q5 && ../$(VENV_PYTHON) q5.py && cd ..
+# endif
