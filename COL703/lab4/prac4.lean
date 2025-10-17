@@ -43,18 +43,21 @@ theorem in_surround : ∀ α : Type, ∀ x : α, ∀ l : List α,
     /-
         At this point we have an existentially quantified induction hypothesis statement (which we are calling Ih). A simple pattern matching tells us that the values for "front" and "back" that will satisfy the goal depend on the values for "front" and "back" that witness the truth of Ih (i.e. can be assigned to the quantified variables to make the qf body of Ih true). In order to finish up the proof with exists, however, we need access to the *names* of these values for "front" and "back" in Ih. In order to obtain these names, we turn to the tactic 'cases' (which we already saw earlier, in a different context, to simplify a hypothesis of the form f x = f y to give us x = y), which can help break down an existentially quantified hypothesis. Writing "cases Ih" will break down the statement by stripping off the first existential quantification at the head, giving the variable a name, and giving the rest of the statement another name -- however, these names are not accessible for further use in proofs! In order to enforce names of our choosing, we need to follow "cases Ih" by "case intro" and then give a name to the quantified variable as well as the statement that follows. If, as in our current case, there are more than one quantification, we have to do cases followed by case intro as many times as there are existentially quantified variables. This yields the following structure.
     -/
-                            cases Ih
-                            case intro fr Ihf =>
-                              cases Ihf
-                              case intro bk Ihfb =>
+                            -- cases Ih
+                            -- case intro fr Ihf =>
+                            --   cases Ihf
+                            --   case intro bk Ihfb =>
     /-
         Obviously this becomes a pain to write if one has a deep sequence of existential quantification, so an alternative is to write the following. obtain allows us to specify the structure of the existentially quantified statement by giving names to witnesses for each of the quantified variables and the qf body all in one go, using appropriate nestings of ⟨ (\langle) and ⟩ (\rangle) to indicate scope. (If you wish, you can comment out the above four lines with cases etc, and uncomment the following line with obtain. The effect is the same, and the remaining proof obligation remains exactly the same.)
 
     -/
-    /-  obtain ⟨fr, ⟨bk, Ihfb⟩⟩ := Ih -/
+    obtain ⟨fr, ⟨bk, Ihfb⟩⟩ := Ih
     /-  Once we are done with this, the rest of the proof becomes easy. The exact position of x inside tl is given by the bookends fr and bk, and so the new bookend values become y prepended to fr, and bk itself. Remove the following sorry and finish the proof. -/
-            sorry
-            -- YOUR ANSWER GOES HERE
+    exists (y :: fr)
+    exists bk
+    show y :: tl = (y :: fr) ++ [x] ++ bk
+    rw [Ihfb]
+    simp
 
 /-
   State and prove a theorem called in_append that says that for any type, any object x of said type, and any lists l1 and l2 of said type, if x belongs to l1, then x must belong to l1 ++ l2.
@@ -63,12 +66,33 @@ theorem in_surround : ∀ α : Type, ∀ x : α, ∀ l : List α,
 -/
 
 -- YOUR ANSWER GOES HERE
+theorem in_append : ∀ α : Type, ∀ x : α, ∀ l1 l2 : List α,
+  BelongsTo x l1 → BelongsTo x (l1 ++ l2) :=
+  by
+    intro α x l1 l2 h
+    induction h with
+    | isHead tl =>
+      apply BelongsTo.isHead
+    | inTail y tl htl Ih =>
+      apply BelongsTo.inTail
+      exact Ih
 
 /-
   State and prove another theorem called in_append2 that says that for any type, any object x of said type, and any lists l1 and l2 of said type, if x belongs to *l2*, then x must belong to l1 ++ l2. Can such a small difference in the statement make a difference in the proofs?
 -/
 
 -- YOUR ANSWER GOES HERE
+theorem in_append2 : ∀ α : Type, ∀ x : α, ∀ l1 l2 : List α,
+  BelongsTo x l2 → BelongsTo x (l1 ++ l2) :=
+  by
+    intro α x l1 l2 h
+    induction l1 with
+    | nil =>
+      exact h
+    | cons y tl Ih =>
+      -- (y :: tl) ++ l2 = y :: (tl ++ l2)
+      apply BelongsTo.inTail
+      exact Ih
 
 /-
   Recall that we defined a predicate called uniq, which took as argument a list (of arbitrary type) and returned true if the elements of the list were all distinct, and false otherwise. One possible definition for uniq is given below.
@@ -86,12 +110,28 @@ def uniq {α : Type} [BEq α] : List α → Bool
 
 -- YOUR ANSWER GOES HERE
 
+inductive uniq_ind {α : Type} : List α → Prop
+where
+  | nil : uniq_ind []
+  | cons (h : α) (tl : List α) : ¬(BelongsTo h tl) → uniq_ind tl → uniq_ind (h :: tl)
+
 /-
   State and prove a theorem called uniq_sublists which uses the uniq_ind predicate and says that if a list (of any arbitrary type) is composed of distinct elements, it can be split into two sublists, each of which is composed of distinct elements. (Is the converse true?) You might need a helper theorem; if you do, feel free to name it something appropriate and state and prove it before using it.
 -/
 
 -- YOUR ANSWER GOES HERE
 
+theorem uniq_sublists {α : Type} :
+  ∀ (l : List α), uniq_ind l → ∃ l1 l2 : List α, l = l1 ++ l2 ∧ uniq_ind l1 ∧ uniq_ind l2 := by
+  intro l h
+  exists l, []
+  constructor
+  · simp
+  constructor
+  · exact h
+  · apply uniq_ind.nil
+
+/-Converse is False l1=[1] l2=[1], l=l1++l2=[1,1]-/
 /-
   For more examples of inductive predicates and inductive proofs using them, go through Sections 6.3 and 6.6 of the Hitchhiker's Guide to Logical Verification.
 -/
