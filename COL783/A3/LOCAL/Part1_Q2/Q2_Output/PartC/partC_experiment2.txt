@@ -1,0 +1,6 @@
+Experiment 2: keep top N^2/256 coefficients vs downsample to N/16 x N/16
+k (coefficients kept): 256
+MSE (haar top-k): 5477.622229
+PSNR (haar top-k): 10.744883 dB
+MSE (downsample then upsample): 3600.703125
+PSNR (downsample then upsample): 12.566930 dB

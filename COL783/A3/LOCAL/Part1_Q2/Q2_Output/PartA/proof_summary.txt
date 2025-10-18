@@ -1,0 +1,2 @@
+Proof (summary): The Haar transform pairs consecutive samples and maps (x,y) -> ((x+y)/sqrt(2), (x-y)/sqrt(2)).
+This is an orthonormal rotation in R^2; repeated dyadic application preserves the Euclidean norm.

@@ -1,0 +1,5 @@
+Part A: 1D Haar transform numerical verification
+Original signal norm: 2275.012087879974
+Transform coefficients norm: 2275.012087879973
+Reconstructed signal norm: 2275.012087879972
+Reconstruction max abs error: 3.705882e+02

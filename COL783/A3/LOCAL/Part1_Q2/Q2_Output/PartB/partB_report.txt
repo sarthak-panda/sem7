@@ -1,0 +1,4 @@
+Part B: 2D Haar transform and reconstruction
+Input image shape: (256, 256)
+Max abs(diff) between input and reconstruction: 2.550000e+02
+PSNR between input and reconstruction: 9.063715 dB

@@ -1,0 +1,7 @@
+Experiment 1: keep top N^2/16 coefficients vs downsample to N/4 x N/4
+Image size: 256x256
+k (coefficients kept): 4096
+MSE (haar top-k): 6200.670471
+PSNR (haar top-k): 10.206417 dB
+MSE (downsample then upsample): 3600.499512
+PSNR (downsample then upsample): 12.567176 dB
