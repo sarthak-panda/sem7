@@ -36,11 +36,12 @@ def construct_gaussian_pyramid(image, levels, kernel):
         List of images forming the Gaussian pyramid
     """
     pyramid = [image]
+    current = image.astype(np.float32).copy()
     current = image.copy()
 
     for i in range(levels - 1):
         # Convolve with separable kernel (horizontal then vertical)
-        blurred = cv2.sepFilter2D(current, -1, kernel, kernel, borderType=cv2.BORDER_REFLECT)
+        blurred = cv2.sepFilter2D(current, cv2.CV_32F, kernel, kernel, borderType=cv2.BORDER_REFLECT)
 
         # Downsample by taking every alternate pixel
         downsampled = blurred[::2, ::2]
@@ -63,6 +64,7 @@ def upsample_and_convolve(image, target_shape, kernel):
         Upsampled and convolved image
     """
     h, w = target_shape[:2]
+    image = image.astype(np.float32)
 
     # Create upsampled image with zeros
     if len(image.shape) == 3:
@@ -74,10 +76,10 @@ def upsample_and_convolve(image, target_shape, kernel):
     upsampled[::2, ::2] = image
 
     # Multiply by 2 as per the formula
-    upsampled *= 2
+    upsampled *= 4.0
 
     # Convolve with the kernel (separably)
-    result = cv2.sepFilter2D(upsampled, -1, kernel, kernel, borderType=cv2.BORDER_REFLECT)
+    result = cv2.sepFilter2D(upsampled, cv2.CV_32F, kernel, kernel, borderType=cv2.BORDER_REFLECT)
 
     return result
 
@@ -191,7 +193,8 @@ def main():
     if f is None or g is None:
         print(f"Error: Could not load images from {f_path} and {g_path}")
         return
-
+    f = f.astype(np.float32)
+    g = g.astype(np.float32)
     print(f"Loaded f: {f.shape}, g: {g.shape}")
 
     # Ensure images are the same size
@@ -236,7 +239,7 @@ def main():
     reconstructed_f = np.clip(reconstructed_f, 0, 255).astype(np.uint8)
 
     # Verify reconstruction
-    diff = cv2.absdiff(f, reconstructed_f)
+    diff = cv2.absdiff(f.astype(np.uint8), reconstructed_f)
     max_error = np.max(diff)
     mean_error = np.mean(diff)
 
@@ -281,6 +284,7 @@ def main():
     print("="*50)
 
     print("Creating Gaussian pyramid of the mask...")
+    mask = mask.astype(np.float32) 
     mask_pyramid = construct_gaussian_pyramid(mask, num_levels, kernel)
     save_pyramid_images(mask_pyramid, output_partD, "gaussian_mask")
 
