@@ -90,7 +90,7 @@ print(f"Reconstruction error: {np.linalg.norm(test_signal - reconstructed):.2e}"
 print(f"||f|| = {norm_f:.6f}, ||t|| = {norm_t:.6f}, Difference: {diff:.2e}")
 
 # NOTE: Change 'image.jpeg' to 'q2_input.png' if available!
-img = Image.open('image.jpeg').convert('L')
+img = Image.open('../Testcases/q2_input.png').convert('L')
 img_array = np.array(img.resize((256,256), Image.LANCZOS), dtype=float)
 middle_row = img_array[img_array.shape[0]//2, :]
 t_row = haar_1d(middle_row)

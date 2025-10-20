@@ -36,6 +36,7 @@ help:
 	@echo   install  - Install/update dependencies in existing venv
 	@echo   info     - Show environment information
 	@echo   q1       - Run Part1_Q1/q1.py with activated environment
+	@echo   q2       - Run Part1_Q2/q2.py with activated environment
 
 # Create virtual environment and install dependencies
 .PHONY: build
@@ -102,6 +103,16 @@ ifeq ($(OS),Windows_NT)
 	$(VENV_ACTIVATE) && cd Part1_Q1 && ..\$(VENV_PYTHON) q1_local.py && cd ..
 else
 	. $(VENV_ACTIVATE) && cd Part1_Q1 && ../$(VENV_PYTHON) q1_local.py && cd ..
+endif
+
+# Run Q1 script
+.PHONY: q2
+q2: $(VENV_DIR)
+	@echo Running Q2...
+ifeq ($(OS),Windows_NT)
+	$(VENV_ACTIVATE) && cd Part1_Q2 && ..\$(VENV_PYTHON) q2_local.py && cd ..
+else
+	. $(VENV_ACTIVATE) && cd Part1_Q2 && ../$(VENV_PYTHON) q2_local.py && cd ..
 endif
 
 # Run Q2 script on actual image input
