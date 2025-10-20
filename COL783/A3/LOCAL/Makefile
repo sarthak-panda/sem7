@@ -99,9 +99,9 @@ rebuild: clean build
 q1: $(VENV_DIR)
 	@echo Running Q1...
 ifeq ($(OS),Windows_NT)
-	$(VENV_ACTIVATE) && cd Part1_Q1 && ..\$(VENV_PYTHON) q1_local.py && cd ..
+	$(VENV_ACTIVATE) && cd Part1_Q1 && ..\$(VENV_PYTHON) q1_old_local_copy.py && cd ..
 else
-	. $(VENV_ACTIVATE) && cd Part1_Q1 && ../$(VENV_PYTHON) q1_local.py && cd ..
+	. $(VENV_ACTIVATE) && cd Part1_Q1 && ../$(VENV_PYTHON) q1_old_local_copy.py && cd ..
 endif
 
 # Run Q2 script on actual image input
