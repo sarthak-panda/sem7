@@ -139,7 +139,7 @@ def haar_multilevel_inverse(coeffs, levels):
     # Calculate dimensions for each level
     dimensions = [(rows, cols)]
     for _ in range(levels - 1):
-        dimensions.append((dimensions[-1] // 2, dimensions[-1] // 2))
+        dimensions.append((dimensions[-1][0] // 2, dimensions[-1][1] // 2))
     dimensions.reverse()
     
     # Apply inverse transform from coarsest to finest
@@ -168,8 +168,10 @@ def get_db2_coefficients():
     ])
     
     # Wavelet function coefficients (high-pass filter)
-    g = np.array([h, -h, h, -h])
-    
+    #g = np.array([h, -h, h, -h])
+    g = ((-1.)**np.arange(len(h))) * h[::-1]
+    h = np.asarray(h).ravel()
+    g = np.asarray(g).ravel()
     return h, g
 
 def db2_wavelet_1d_forward(signal, h, g, mode='periodic'):
@@ -298,7 +300,7 @@ def db2_multilevel_inverse(coeffs, levels, mode='periodic'):
     
     dimensions = [(rows, cols)]
     for _ in range(levels - 1):
-        dimensions.append((dimensions[-1] // 2, dimensions[-1] // 2))
+        dimensions.append((dimensions[-1][0] // 2, dimensions[-1][1] // 2))
     dimensions.reverse()
     
     for level, (current_rows, current_cols) in enumerate(dimensions):
@@ -377,7 +379,7 @@ print("======Part-A processing...======")
 print("=" * 60)
 
 # Load image
-img = Image.open('q3_input.png').convert('L')
+img = Image.open('../Testcases/q3_input.png').convert('L')
 f = np.array(img, dtype=np.float64)
 rows, cols = f.shape
 print(f"Loaded image: {rows} x {cols}")
@@ -421,24 +423,25 @@ print(f"Number of detail coefficients: {len(f_details)}")
 
 # Create histograms
 fig, axes = plt.subplots(1, 3, figsize=(15, 4))
+ax0, ax1, ax2 = axes
 
-axes.hist(f_details, bins=100, color='blue', alpha=0.7, edgecolor='black')
-axes.set_title('Histogram of Detail Coefficients (f)')
-axes.set_xlabel('Coefficient Value')
-axes.set_ylabel('Frequency')
-axes.grid(True, alpha=0.3)
+ax0.hist(f_details, bins=100, color='blue', alpha=0.7, edgecolor='black')
+ax0.set_title('Histogram of Detail Coefficients (f)')
+ax0.set_xlabel('Coefficient Value')
+ax0.set_ylabel('Frequency')
+ax0.grid(True, alpha=0.3)
 
-axes.hist(g_details, bins=100, color='red', alpha=0.7, edgecolor='black')
-axes.set_title('Histogram of Detail Coefficients (g)')
-axes.set_xlabel('Coefficient Value')
-axes.set_ylabel('Frequency')
-axes.grid(True, alpha=0.3)
+ax1.hist(g_details, bins=100, color='red', alpha=0.7, edgecolor='black')
+ax1.set_title('Histogram of Detail Coefficients (g)')
+ax1.set_xlabel('Coefficient Value')
+ax1.set_ylabel('Frequency')
+ax1.grid(True, alpha=0.3)
 
-axes.hist(noise_details, bins=100, color='green', alpha=0.7, edgecolor='black')
-axes.set_title('Histogram of Detail Coefficients (η = g - f)')
-axes.set_xlabel('Coefficient Value')
-axes.set_ylabel('Frequency')
-axes.grid(True, alpha=0.3)
+ax2.hist(noise_details, bins=100, color='green', alpha=0.7, edgecolor='black')
+ax2.set_title('Histogram of Detail Coefficients (η = g - f)')
+ax2.set_xlabel('Coefficient Value')
+ax2.set_ylabel('Frequency')
+ax2.grid(True, alpha=0.3)
 
 plt.tight_layout()
 plt.savefig('./Q3_Output/PartA/detail_coeffs_histograms.png', dpi=150, bbox_inches='tight')
@@ -560,24 +563,25 @@ noise_details_db2 = extract_detail_coefficients(noise_wavelet_db2, levels, rows,
 
 # Create histograms
 fig, axes = plt.subplots(1, 3, figsize=(15, 4))
+ax0, ax1, ax2 = axes
 
-axes.hist(f_details_db2, bins=100, color='blue', alpha=0.7, edgecolor='black')
-axes.set_title('Histogram of Detail Coefficients (f) - db2')
-axes.set_xlabel('Coefficient Value')
-axes.set_ylabel('Frequency')
-axes.grid(True, alpha=0.3)
+ax0.hist(f_details_db2, bins=100, color='blue', alpha=0.7, edgecolor='black')
+ax0.set_title('Histogram of Detail Coefficients (f) - db2')
+ax0.set_xlabel('Coefficient Value')
+ax0.set_ylabel('Frequency')
+ax0.grid(True, alpha=0.3)
 
-axes.hist(g_details_db2, bins=100, color='red', alpha=0.7, edgecolor='black')
-axes.set_title('Histogram of Detail Coefficients (g) - db2')
-axes.set_xlabel('Coefficient Value')
-axes.set_ylabel('Frequency')
-axes.grid(True, alpha=0.3)
+ax1.hist(g_details_db2, bins=100, color='red', alpha=0.7, edgecolor='black')
+ax1.set_title('Histogram of Detail Coefficients (g) - db2')
+ax1.set_xlabel('Coefficient Value')
+ax1.set_ylabel('Frequency')
+ax1.grid(True, alpha=0.3)
 
-axes.hist(noise_details_db2, bins=100, color='green', alpha=0.7, edgecolor='black')
-axes.set_title('Histogram of Detail Coefficients (η = g - f) - db2')
-axes.set_xlabel('Coefficient Value')
-axes.set_ylabel('Frequency')
-axes.grid(True, alpha=0.3)
+ax2.hist(noise_details_db2, bins=100, color='green', alpha=0.7, edgecolor='black')
+ax2.set_title('Histogram of Detail Coefficients (η = g - f) - db2')
+ax2.set_xlabel('Coefficient Value')
+ax2.set_ylabel('Frequency')
+ax2.grid(True, alpha=0.3)
 
 plt.tight_layout()
 plt.savefig('./Q3_Output/PartC/detail_coeffs_histograms_db2.png', dpi=150, bbox_inches='tight')

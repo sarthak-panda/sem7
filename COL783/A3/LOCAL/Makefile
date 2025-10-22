@@ -115,6 +115,15 @@ else
 	. $(VENV_ACTIVATE) && cd Part1_Q2 && ../$(VENV_PYTHON) q2_local.py && cd ..
 endif
 
+.PHONY: q3
+q3: $(VENV_DIR)
+	@echo Running Q3...
+ifeq ($(OS),Windows_NT)
+	$(VENV_ACTIVATE) && cd Part2_Q3 && ..\$(VENV_PYTHON) q3_local.py && cd ..
+else
+	. $(VENV_ACTIVATE) && cd Part2_Q3 && ../$(VENV_PYTHON) q3_local.py && cd ..
+endif
+
 # Run Q2 script on actual image input
 # .PHONY: q2_act
 # q2_act: $(VENV_DIR)
