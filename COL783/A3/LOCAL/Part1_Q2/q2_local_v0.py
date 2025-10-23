@@ -90,7 +90,7 @@ print(f"Reconstruction error: {np.linalg.norm(test_signal - reconstructed):.2e}"
 print(f"||f|| = {norm_f:.6f}, ||t|| = {norm_t:.6f}, Difference: {diff:.2e}")
 
 # NOTE: Change 'image.jpeg' to 'q2_input.png' if available!
-img = Image.open('../Testcases/q2_input_new.png').convert('L')
+img = Image.open('../Testcases/q2_input.png').convert('L')
 img_array = np.array(img.resize((256,256), Image.LANCZOS), dtype=float)
 middle_row = img_array[img_array.shape[0]//2, :]
 t_row = haar_1d(middle_row)
@@ -105,52 +105,13 @@ print("======Part-B processing...======")
 img_to_save = Image.fromarray(img_array.astype(np.uint8))
 img_to_save.save('./Q2_Output/PartB/input_image.png')
 
-# haar_coeffs = haar_2d(img_array)
-# I_max = np.max(np.abs(haar_coeffs))
-# haar_visual = haar_coeffs + I_max / 2
-# haar_visual = np.clip(haar_visual, 0, I_max)
-# haar_visual = (haar_visual / I_max * 255).astype(np.uint8)
-# haar_img = Image.fromarray(haar_visual)
-# haar_img.save('./Q2_Output/PartB/haar_transform.png')
-# --- Replace your block with this ---
 haar_coeffs = haar_2d(img_array)
-#create a bipolar vizualization
-img = haar_coeffs.copy().astype(float)
-# normalize by largest absolute value (avoid division by zero)
-den = max(abs(img.min()), abs(img.max()), 1e-12)
-img /= den   # now roughly in [-1, 1]
-h, w = img.shape
-out = np.zeros((h, w, 3), dtype=float)
-# parameters used for the bipolar() helper
-a = 0.005
-b = 1.0 - a
-c = 0.5
-# safe masked computation to avoid invalid-value warnings
-neg_mask = img < 0
-pos_mask = img > 0
-# safe denominators (avoid exact zero)
-neg_denom = img.min() - 0.001
-pos_denom = img.max() + 0.001
-if abs(neg_denom) < 1e-12: neg_denom = -1e-12
-if abs(pos_denom) < 1e-12: pos_denom = 1e-12
-# zero-out channels first
-out[:, :, 0] = 0.0
-out[:, :, 2] = 0.0
-# compute only where needed
-if neg_mask.any():
-    base_neg = img[neg_mask] / neg_denom
-    base_neg = np.clip(base_neg, 0.0, None)   # ensure non-negative before fractional power
-    out[..., 0][neg_mask] = a + b * np.power(base_neg, c)
-if pos_mask.any():
-    base_pos = img[pos_mask] / pos_denom
-    base_pos = np.clip(base_pos, 0.0, None)
-    out[..., 2][pos_mask] = a + b * np.power(base_pos, c)
-# apply gamma correction and convert to uint8 (same idea as from_float)
-gamma = 2.2
-out = np.power(out, 1.0 / gamma)          # linear->display space
-haar_img = Image.fromarray((np.clip(out * 255.0, 0, 255)).astype(np.uint8))
+I_max = np.max(np.abs(haar_coeffs))
+haar_visual = haar_coeffs + I_max / 2
+haar_visual = np.clip(haar_visual, 0, I_max)
+haar_visual = (haar_visual / I_max * 255).astype(np.uint8)
+haar_img = Image.fromarray(haar_visual)
 haar_img.save('./Q2_Output/PartB/haar_transform.png')
-# --- end replacement ---
 
 reconstructed = inverse_haar_2d(haar_coeffs)
 reconstructed_img = Image.fromarray(np.clip(reconstructed, 0, 255).astype(np.uint8))
