@@ -1,0 +1,3 @@
+Entropy: 14.499028753027694
+Average Huffman code length: 14.522193976542887
+Total encoded bits: 1833761

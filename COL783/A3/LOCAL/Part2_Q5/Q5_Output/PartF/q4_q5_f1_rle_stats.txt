@@ -1,0 +1,1 @@
+RLE actual compression ratio: 6.37614981838766

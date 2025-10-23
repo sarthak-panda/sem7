@@ -1,0 +1,3 @@
+Adaptive Prediction compression ratio: 2.0648447368208114
+LZW compression ratio: 3.79185065116539
+Actual compression ratio: 2.090186843900614

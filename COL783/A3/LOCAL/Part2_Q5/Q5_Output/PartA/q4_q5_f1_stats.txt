@@ -1,0 +1,2 @@
+Standard deviation: 77.33495135071334
+Entropy: 1.6049838809459638
