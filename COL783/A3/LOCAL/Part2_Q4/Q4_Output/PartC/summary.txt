@@ -1,0 +1,57 @@
+============================================================
+PART C: Full Image DCT Compression Summary
+============================================================
+
+Target: PSNR >= 20 dB (RMSE <= 25.5)
+
+Image f1 (q4_input_1.png):
+  PSNR: 20.92 dB
+  RMSE: 22.93
+  Total coefficients: 219648
+  Nonzero coefficients: 2
+  Percentage kept: 0.00%
+  Max error: 107.12
+
+Image f2 (q4_input_2.png):
+  PSNR: 20.02 dB
+  RMSE: 25.43
+  Total coefficients: 474880
+  Nonzero coefficients: 75
+  Percentage kept: 0.02%
+  Max error: 158.57
+
+------------------------------------------------------------
+DISCUSSION: Block DCT vs Full Image DCT
+------------------------------------------------------------
+
+PROS of Full Image DCT:
+1. Better energy compaction - most energy concentrated in
+   top-left corner of the entire frequency domain
+2. No blocking artifacts - smoother reconstructed images
+3. Higher compression ratio for same PSNR target
+4. Better for images with smooth, slowly varying content
+
+CONS of Full Image DCT:
+1. High computational complexity - O(N²log N) for entire image
+2. High memory requirements - need to store full DCT matrix
+3. Poor adaptability to local image features
+4. Errors can propagate across entire image
+5. Not practical for large images in real-time applications
+
+PROS of Block DCT:
+1. Lower computational complexity - can process blocks in parallel
+2. Lower memory requirements - only need block-size buffers
+3. Better adaptability to local features
+4. Localized errors - artifacts confined to blocks
+5. Industry standard (JPEG, MPEG)
+
+CONS of Block DCT:
+1. Blocking artifacts at high compression
+2. Less efficient energy compaction
+3. Discontinuities at block boundaries
+
+CONCLUSION:
+Block DCT is preferred in practice due to computational
+efficiency and practical implementation advantages, despite
+slightly worse compression efficiency. The blocking artifacts
+can be mitigated using overlapped blocks or post-filtering.

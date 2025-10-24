@@ -37,6 +37,9 @@ help:
 	@echo   info     - Show environment information
 	@echo   q1       - Run Part1_Q1/q1.py with activated environment
 	@echo   q2       - Run Part1_Q2/q2.py with activated environment
+	@echo   q3       - Run Part2_Q3/q3.py with activated environment
+	@echo   q4       - Run Part2_Q4/q4.py with activated environment
+	@echo   q5       - Run Part2_Q5/q5.py with activated environment
 
 # Create virtual environment and install dependencies
 .PHONY: build
@@ -122,6 +125,15 @@ ifeq ($(OS),Windows_NT)
 	$(VENV_ACTIVATE) && cd Part2_Q3 && ..\$(VENV_PYTHON) q3_local.py && cd ..
 else
 	. $(VENV_ACTIVATE) && cd Part2_Q3 && ../$(VENV_PYTHON) q3_local.py && cd ..
+endif
+
+.PHONY: q4
+q4: $(VENV_DIR)
+	@echo Running Q4...
+ifeq ($(OS),Windows_NT)
+	$(VENV_ACTIVATE) && cd Part2_Q4 && ..\$(VENV_PYTHON) q4_git.py && cd ..
+else
+	. $(VENV_ACTIVATE) && cd Part2_Q4 && ../$(VENV_PYTHON) q4_git.py && cd ..
 endif
 
 .PHONY: q5
