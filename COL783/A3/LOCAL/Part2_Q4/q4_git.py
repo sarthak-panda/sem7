@@ -107,7 +107,7 @@ def part_a():
     print("\n" + "="*60)
     print("======Part-A processing...======")
     print("="*60 + "\n")
-    print("Loading and preparing images...")
+    print("Loading images...")
     f1 = load_and_crop_image('../Testcases/q4_q5_f1.jpg')
     f2 = load_and_crop_image('../Testcases/q4_q5_input_f2.png')
     print("\nProcessing f1 (image 1)...")
