@@ -1,0 +1,22 @@
+============================================================
+PART C: Full Image DCT Compression Summary
+============================================================
+
+Target: PSNR >= 20 dB (RMSE <= 25.5)
+
+Image f1 (q4_input_1.png):
+  PSNR: 20.92 dB
+  RMSE: 22.93
+  Total coefficients: 219648
+  Nonzero coefficients: 2
+  Percentage kept: 0.00%
+  Max error: 107.12
+
+Image f2 (q4_input_2.png):
+  PSNR: 20.02 dB
+  RMSE: 25.43
+  Total coefficients: 474880
+  Nonzero coefficients: 75
+  Percentage kept: 0.02%
+  Max error: 158.57
+

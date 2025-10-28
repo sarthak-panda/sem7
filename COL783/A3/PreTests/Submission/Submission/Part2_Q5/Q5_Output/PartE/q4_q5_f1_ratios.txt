@@ -1,0 +1,3 @@
+Prediction compression ratio: 4.984473735203414
+LZW compression ratio: 9.709486340730262
+Actual compression ratio: 6.338979015378621

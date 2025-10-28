@@ -1,0 +1,21 @@
+============================================================
+PART B: Block-wise DCT Compression Summary
+============================================================
+
+Target: PSNR >= 20 dB (RMSE <= 25.5)
+
+Image f1 (q4_input_1.png):
+  PSNR: 29.17 dB
+  RMSE: 8.87
+  Total coefficients: 219648
+  Nonzero coefficients: 872
+  Percentage kept: 0.40%
+  Max error: 118.43
+
+Image f2 (q4_input_2.png):
+  PSNR: 25.49 dB
+  RMSE: 13.56
+  Total coefficients: 474880
+  Nonzero coefficients: 2719
+  Percentage kept: 0.57%
+  Max error: 172.12
