@@ -22,7 +22,6 @@ inductive pform : Type
 | myAnd : pform → pform → pform
 | myOr  : pform → pform → pform
 | myImp : pform → pform → pform
-| myImpP : pform → pform → pform   -- Primal implication
 deriving DecidableEq, Repr
 
 open pform
@@ -32,27 +31,28 @@ inductive pftree : Finset pform → pform → Type
 
 | not_i {X α β} (h₁ : pftree (X ∪ {α}) β) (h₂ : pftree (X ∪ {α}) (myNot β)) :
     pftree X (myNot α)
+
 | not_e {X α β} (h₁ : pftree X β) (h₂ : pftree X (myNot β)) :
     pftree X α
 
 | and_i {X α β} (h₁ : pftree X α) (h₂ : pftree X β) :
     pftree X (myAnd α β)
+
 | and_e {X α₀ α₁} (h : pftree X (myAnd α₀ α₁)) (j : Bool) :
     pftree X (if j then α₀ else α₁)
 
 | or_i {X α₀ α₁} (j : Bool) (h : pftree X (if j then α₀ else α₁)) :
     pftree X (myOr α₀ α₁)
+
 | or_e {X α β γ} (h₁ : pftree X (myOr α β))
     (h₂ : pftree (X ∪ {α}) γ) (h₃ : pftree (X ∪ {β}) γ) :
     pftree X γ
 
-| imp_i {X α β} (h : pftree (X ∪ {α}) β) : -- Intuitionistic implication
+| imp_i {X α β} (h : pftree (X ∪ {α}) β) :
     pftree X (myImp α β)
+
 | imp_e {X α β} (h₁ : pftree X (myImp α β)) (h₂ : pftree X α) :
     pftree X β
-
-| imp_p_i {X α β} (h : pftree X β) :
-    pftree X (myImpP α β)
 
 open pftree
 
@@ -81,8 +81,6 @@ match h₁ with
     imp_i (mono_prf_fn h (Finset.union_subset_union_left hsub))
 | imp_e hImp hα =>
     imp_e (mono_prf_fn hImp hsub) (mono_prf_fn hα hsub)
-| @imp_p_i X α β h =>
-    imp_p_i (mono_prf_fn h hsub)
 
 theorem mono_prf {X Y : Finset pform} {φ : pform}
     (h₁ : pftree X φ) (hsub : X ⊆ Y) : ∃ (_ : pftree Y φ), True :=
