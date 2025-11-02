@@ -13,3 +13,6 @@
 [submodule "COL783/A3/external/COL783_A3"]
 	path = COL783/A3/external/COL783_A3
 	url = https://github.com/sarthak-panda/COL783_A3.git
+[submodule "COL783/A4/external/COL783_A4"]
+	path = COL783/A4/external/COL783_A4
+	url = git@github.com:sarthak-panda/COL783_A4.git
