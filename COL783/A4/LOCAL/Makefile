@@ -17,7 +17,7 @@ ifeq ($(OS),Windows_NT)
 else
     DETECTED_OS := $(shell uname -s)
     PYTHON := python3
-    VENV_DIR := venv
+    VENV_DIR := venv-linux
     VENV_ACTIVATE := $(VENV_DIR)/bin/activate
     VENV_PYTHON := $(VENV_DIR)/bin/python
     VENV_PIP := $(VENV_DIR)/bin/pip
@@ -103,9 +103,9 @@ rebuild: clean build
 q1: $(VENV_DIR)
 	@echo Running Q1...
 ifeq ($(OS),Windows_NT)
-	$(VENV_ACTIVATE) && cd Part1_Q1 && ..\$(VENV_PYTHON) q1.py && cd ..
+	$(VENV_ACTIVATE) && cd Part1_Q1 && ..\$(VENV_PYTHON) q1_local.py && cd ..
 else
-	. $(VENV_ACTIVATE) && cd Part1_Q1 && ../$(VENV_PYTHON) q1.py && cd ..
+	. $(VENV_ACTIVATE) && cd Part1_Q1 && ../$(VENV_PYTHON) q1_local.py && cd ..
 endif
 
 # Run Q1 script
